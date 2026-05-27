@@ -1,14 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { MobileNav } from './components/MobileNav';
 import { Dashboard } from './pages/Dashboard';
 import { VolatilityComparison } from './pages/VolatilityComparison';
 import { Forecast } from './pages/Forecast';
 import './styles/global.css';
+import './styles/components.css';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = isSidebarOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isSidebarOpen]);
 
   return (
     <Router>
@@ -24,6 +33,7 @@ function App() {
             </Routes>
           </div>
         </main>
+        <MobileNav />
       </div>
     </Router>
   );

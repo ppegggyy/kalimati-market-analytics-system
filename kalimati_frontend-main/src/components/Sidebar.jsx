@@ -14,12 +14,11 @@ export function Sidebar({ isSidebarOpen, setIsSidebarOpen }) {
   return (
     <>
       {/* Mobile Backdrop Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="sidebar-overlay" 
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      <div
+        className={`sidebar-overlay ${isSidebarOpen ? 'is-visible' : ''}`}
+        onClick={() => setIsSidebarOpen(false)}
+        aria-hidden={!isSidebarOpen}
+      />
 
       <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="brand">

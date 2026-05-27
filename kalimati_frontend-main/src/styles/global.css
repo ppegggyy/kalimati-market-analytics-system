@@ -69,23 +69,36 @@ input, select {
 /* Base Layout container */
 .app-layout {
   display: flex;
+  flex-direction: column;
   min-height: 100dvh;
-  height: 100%;
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
 }
 
+@media (min-width: 1025px) {
+  .app-layout {
+    flex-direction: row;
+    height: 100%;
+  }
+}
+
 .main-content {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 clamp(16px, 3vw, 40px) clamp(20px, 3vw, 40px);
+  padding: 0 clamp(12px, 3vw, 40px) clamp(72px, 10vw, 40px);
   width: 100%;
   max-width: 100%;
   min-width: 0;
+}
+
+@media (min-width: 1025px) {
+  .main-content {
+    padding-bottom: clamp(20px, 3vw, 40px);
+  }
 }
 
 .page-content {
