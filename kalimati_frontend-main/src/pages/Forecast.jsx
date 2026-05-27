@@ -88,7 +88,7 @@ export function Forecast() {
       {loading ? (
         <div className="state-container">Computing {modelUsed || 'ARIMA'} predictions...</div>
       ) : (
-        <div className="dashboard-grid">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
           {/* Top Analytical Metrics */}
           <div>

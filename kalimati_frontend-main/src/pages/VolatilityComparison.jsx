@@ -68,7 +68,7 @@ export function VolatilityComparison() {
       {loading ? (
         <div className="state-container">Loading volatility analysis...</div>
       ) : (
-        <div className="dashboard-grid">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           <div className="card">
             <div className="card-header">
               <h2 className="card-title">Market Volatility Index (Top {MAX_PRODUCTS})</h2>
