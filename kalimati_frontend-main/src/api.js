@@ -2,12 +2,14 @@
 // All communication with the FastAPI backend goes through this file.
 // The Vite proxy in vite.config.js forwards /api → http://localhost:8000/api
 
-// In production set VITE_API_URL to your Render backend URL
-// e.g. https://kalimati-backend.onrender.com
-// Locally the Vite proxy forwards /api → http://localhost:8000
-const BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api/v1`
-  : '/api/v1';
+// Production backend on Render
+const BACKEND_URL = 'https://kalimati-backend.onrender.com';
+
+// In development (npm run dev), the Vite proxy forwards /api → localhost:8000
+// In production, we hit the Render backend directly
+const BASE = import.meta.env.DEV
+  ? '/api/v1'
+  : `${BACKEND_URL}/api/v1`;
 
 // ── Products ────────────────────────────────────────────────────────────────
 // Returns: string[]  e.g. ["Bittergourd", "Broccoli", ..., "Yam"]
