@@ -449,6 +449,37 @@
   gap: 12px;
 }
 
+/* ── Chart Wrapper Utilities ── */
+.chart-wrapper {
+  width: 100%;
+  height: 400px;
+}
+
+.chart-wrapper-sm {
+  width: 100%;
+  height: 320px;
+}
+
+@media (max-width: 768px) {
+  .chart-wrapper {
+    height: 300px;
+  }
+
+  .chart-wrapper-sm {
+    height: 260px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart-wrapper {
+    height: 260px;
+  }
+
+  .chart-wrapper-sm {
+    height: 220px;
+  }
+}
+
 /* Utility for grid layout of cards */
 .dashboard-grid {
   display: grid;
@@ -460,5 +491,41 @@
 @media (max-width: 1024px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  /* Force any child with inline gridColumn: span 2 to span 1 on mobile */
+  .dashboard-grid > * {
+    grid-column: span 1 !important;
   }
 }
+
+/* ── Responsive chart height adjustments ── */
+@media (max-width: 768px) {
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .data-grid th,
+  .data-grid td {
+    padding: 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .error-banner {
+    padding: 16px;
+    font-size: 14px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+  }
+
+  .state-container {
+    padding: 40px 16px;
+    font-size: 15px;
+  }
+}
+

@@ -71,7 +71,15 @@ input, select {
   display: flex;
   height: 100vh;
   width: 100vw;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+@media (max-width: 1024px) {
+  .app-layout {
+    flex-direction: column;
+    overflow-y: auto;
+  }
 }
 
 .main-content {
@@ -79,12 +87,16 @@ input, select {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0 40px 40px 40px; /* Increased padding to remove congestion */
+  max-width: 100vw;
+  min-width: 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .main-content {
     padding: 0 16px 20px 16px;
+    width: 100%;
   }
 }
 

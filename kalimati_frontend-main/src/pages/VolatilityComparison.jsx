@@ -69,11 +69,11 @@ export function VolatilityComparison() {
         <div className="state-container">Loading volatility analysis...</div>
       ) : (
         <div className="dashboard-grid">
-          <div className="card" style={{ gridColumn: 'span 2' }}>
+          <div className="card">
             <div className="card-header">
               <h2 className="card-title">Market Volatility Index (Top {MAX_PRODUCTS})</h2>
             </div>
-            <div style={{ width: '100%', height: 400 }}>
+            <div className="chart-wrapper">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={volatilityData} margin={{ top: 10, right: 30, left: 10, bottom: 100 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
@@ -112,7 +112,7 @@ export function VolatilityComparison() {
             </div>
           </div>
 
-          <div className="card" style={{ gridColumn: 'span 2' }}>
+          <div className="card">
             <div className="card-header">
               <h2 className="card-title">Detailed Volatility Metrics</h2>
             </div>

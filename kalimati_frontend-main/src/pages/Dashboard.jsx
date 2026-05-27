@@ -235,7 +235,7 @@ export function Dashboard() {
             <div className="card-header">
               <h2 className="card-title">Macro Price Trajectory & Moving Average</h2>
             </div>
-            <div style={{ width: '100%', height: 400 }}>
+            <div className="chart-wrapper">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
                   <defs>
@@ -296,7 +296,7 @@ export function Dashboard() {
               <div className="card-header">
                 <h2 className="card-title">Seasonal Price Range Envelope</h2>
               </div>
-              <div style={{ width: '100%', height: 320 }}>
+              <div className="chart-wrapper-sm">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={seasonalData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
@@ -321,7 +321,7 @@ export function Dashboard() {
               <div className="card-header">
                 <h2 className="card-title">Seasonal Volatility (Monthly Std Dev)</h2>
               </div>
-              <div style={{ width: '100%', height: 320 }}>
+              <div className="chart-wrapper-sm">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={seasonalData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
@@ -343,7 +343,7 @@ export function Dashboard() {
               <div className="card-header">
                 <h2 className="card-title">Market Stability Distribution</h2>
               </div>
-              <div style={{ width: '100%', height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="chart-wrapper-sm" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -375,7 +375,7 @@ export function Dashboard() {
               <div className="card-header">
                 <h2 className="card-title">Recent 14-Day Price Movement</h2>
               </div>
-              <div style={{ width: '100%', height: 320 }}>
+              <div className="chart-wrapper-sm">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData.slice(-14)} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
@@ -410,7 +410,7 @@ export function Dashboard() {
             {loadingLatest ? (
               <div style={{ padding: 20 }}>Loading latest prices...</div>
             ) : (
-              <div style={{ overflowX: 'auto', maxHeight: 400, overflowY: 'auto' }}>
+              <div className="data-grid-container" style={{ maxHeight: 400, overflowY: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-card)', zIndex: 1 }}>
                     <tr style={{ borderBottom: '1px solid var(--border-light)' }}>

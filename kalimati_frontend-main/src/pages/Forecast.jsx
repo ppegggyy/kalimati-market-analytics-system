@@ -91,7 +91,7 @@ export function Forecast() {
         <div className="dashboard-grid">
           
           {/* Top Analytical Metrics */}
-          <div style={{ gridColumn: 'span 2' }}>
+          <div>
             <div className="metrics-grid">
               <div className="metric-card">
                 <div className="metric-icon-wrapper" style={{ color: 'var(--accent-primary)', backgroundColor: 'rgba(4, 120, 87, 0.1)' }}>
@@ -133,12 +133,12 @@ export function Forecast() {
             </div>
           </div>
 
-          <div className="card" style={{ gridColumn: 'span 2' }}>
+          <div className="card">
             <div className="card-header">
               <h2 className="card-title">Predictive Trajectory & 95% Confidence Interval</h2>
             </div>
             
-            <div style={{ width: '100%', height: 420 }}>
+            <div className="chart-wrapper">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
                   <defs>
