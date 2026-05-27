@@ -9,6 +9,7 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -81,7 +82,7 @@ def get_volatility(
         std_dev_avg_price=round(std_dev, 4),
         record_count=len(df),
     )
-    crud.set_cached_analytics(db, product, metric_key, as_of, resp.dict())
+    crud.set_cached_analytics(db, product, metric_key, as_of, jsonable_encoder(resp))
     return resp
 
 
@@ -137,7 +138,7 @@ def get_spikes(
         window_days=window,
         spikes=spike_records,
     )
-    crud.set_cached_analytics(db, product, metric_key, as_of, resp.model_dump(), window)
+    crud.set_cached_analytics(db, product, metric_key, as_of, jsonable_encoder(resp), window)
     return resp
 
 
@@ -177,7 +178,7 @@ def get_trend(
 
     result = calculate_price_trend(df)
     resp = TrendResponse(**result)
-    crud.set_cached_analytics(db, product, metric_key, as_of, resp.dict())
+    crud.set_cached_analytics(db, product, metric_key, as_of, jsonable_encoder(resp))
     return resp
 
 
@@ -218,7 +219,7 @@ def get_moving_avg(
     enriched["Date"] = enriched["Date"].astype(str)
 
     result = enriched.to_dict(orient="records")
-    crud.set_cached_analytics(db, product, metric_key, as_of, result, window)
+    crud.set_cached_analytics(db, product, metric_key, as_of, jsonable_encoder(result), window)
     return result
 
 
@@ -260,5 +261,5 @@ def forecast_prices(
         model_used=f"ARIMA{_forecast_service.model_order}",
         forecast=forecast_points,
     )
-    crud.set_cached_analytics(db, payload.product, "forecast", as_of, resp.model_dump(), payload.steps)
+    crud.set_cached_analytics(db, payload.product, "forecast", as_of, jsonable_encoder(resp), payload.steps)
     return resp
