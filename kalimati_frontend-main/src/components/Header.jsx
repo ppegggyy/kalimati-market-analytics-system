@@ -1,8 +1,9 @@
 // src/components/Header.jsx
 import { useLocation } from 'react-router-dom';
+import { Menu } from 'lucide-react';
 import '../styles/components.css';
 
-export function Header() {
+export function Header({ setIsSidebarOpen }) {
   const location = useLocation();
 
   const getPageTitle = () => {
@@ -18,9 +19,18 @@ export function Header() {
 
   return (
     <header className="top-header">
-      <div className="header-title-area">
-        <h1 className="h1">{title}</h1>
-        <p className="subtitle">{subtitle}</p>
+      <div className="header-left">
+        <button 
+          className="mobile-menu-btn" 
+          onClick={() => setIsSidebarOpen(true)}
+          aria-label="Open Menu"
+        >
+          <Menu size={28} strokeWidth={2.5} />
+        </button>
+        <div className="header-title-area">
+          <h1 className="h1">{title}</h1>
+          <p className="subtitle">{subtitle}</p>
+        </div>
       </div>
     </header>
   );

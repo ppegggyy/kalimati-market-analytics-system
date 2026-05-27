@@ -82,12 +82,24 @@ input, select {
   padding: 0 40px 40px 40px; /* Increased padding to remove congestion */
 }
 
+@media (max-width: 768px) {
+  .main-content {
+    padding: 0 16px 20px 16px;
+  }
+}
+
 /* Typography Utilities - Adjusted for sharpness */
 .h1 { font-size: 28px; font-weight: 700; color: var(--text-main); letter-spacing: -0.025em; line-height: 1.2; }
 .h2 { font-size: 20px; font-weight: 600; color: var(--text-main); letter-spacing: -0.015em; }
 .h3 { font-size: 16px; font-weight: 600; color: var(--text-main); letter-spacing: -0.01em; }
 .subtitle { font-size: 15px; font-weight: 400; color: var(--text-muted); margin-top: 4px; }
 .caption { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+
+@media (max-width: 768px) {
+  .h1 { font-size: 24px; }
+  .h2 { font-size: 18px; }
+  .subtitle { font-size: 14px; }
+}
 
 /* Global Scrollbar */
 ::-webkit-scrollbar {
