@@ -5,11 +5,19 @@ import {
 } from 'recharts';
 import { AlertCircle } from 'lucide-react';
 import { fetchProducts, fetchVolatility } from '../api';
+import { useBreakpoint } from '../hooks/useMediaQuery';
+import { getYAxisWidth, getAxisFontSize, getVolatilityChartMargin, getVolatilityXAxisProps } from '../utils/chartHelpers';
 import '../styles/components.css';
 
 const MAX_PRODUCTS = 20;
 
 export function VolatilityComparison() {
+  const { isMobile, isTablet } = useBreakpoint();
+  const chartMargin = getVolatilityChartMargin(isMobile, isTablet);
+  const xAxisProps = getVolatilityXAxisProps(isMobile, isTablet);
+  const yAxisWidth = getYAxisWidth(isMobile, isTablet);
+  const axisFontSize = getAxisFontSize(isMobile, isTablet);
+
   const [volatilityData, setVolatilityData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -73,28 +81,28 @@ export function VolatilityComparison() {
             <div className="card-header">
               <h2 className="card-title">Market Volatility Index (Top {MAX_PRODUCTS})</h2>
             </div>
-            <div className="chart-wrapper">
+            <div className="chart-wrapper chart-wrapper-tall">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={volatilityData} margin={{ top: 10, right: 30, left: 10, bottom: 100 }}>
+                <BarChart data={volatilityData} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
                   <XAxis 
                     dataKey="name" 
                     stroke="var(--text-light)" 
-                    fontSize={12} 
+                    fontSize={xAxisProps.fontSize} 
                     tickLine={false} 
                     axisLine={false}
-                    angle={-45}
-                    textAnchor="end"
-                    interval={0}
-                    height={120}
+                    angle={xAxisProps.angle}
+                    textAnchor={xAxisProps.textAnchor}
+                    interval={xAxisProps.interval}
+                    height={xAxisProps.height}
                   />
                   <YAxis 
                     stroke="var(--text-light)" 
-                    fontSize={12} 
+                    fontSize={axisFontSize} 
                     tickLine={false} 
                     axisLine={false}
                     tickFormatter={(val) => `Rs ${val}`}
-                    width={80}
+                    width={yAxisWidth}
                   />
                   <Tooltip 
                     cursor={{ fill: 'var(--bg-app)' }}
@@ -105,7 +113,7 @@ export function VolatilityComparison() {
                     dataKey="std_dev" 
                     fill="var(--accent-primary)" 
                     radius={[6, 6, 0, 0]} 
-                    barSize={32}
+                    barSize={isMobile ? 14 : isTablet ? 22 : 32}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -121,9 +129,9 @@ export function VolatilityComparison() {
                 <thead>
                   <tr>
                     <th>Commodity</th>
-                    <th>Unit Measurement</th>
-                    <th>Standard Deviation (Rs)</th>
-                    <th>Data Points Tracked</th>
+                    <th className="col-hide-mobile">Unit</th>
+                    <th>Std Dev (Rs)</th>
+                    <th className="col-hide-tablet">Data Points</th>
                     <th>Risk Status</th>
                   </tr>
                 </thead>
@@ -131,9 +139,9 @@ export function VolatilityComparison() {
                   {volatilityData.map((item) => (
                     <tr key={item.name}>
                       <td style={{ fontWeight: 600 }}>{item.name}</td>
-                      <td>{item.unit}</td>
+                      <td className="col-hide-mobile">{item.unit}</td>
                       <td>Rs. {Number(item.std_dev).toFixed(2)}</td>
-                      <td>{item.count} records</td>
+                      <td className="col-hide-tablet">{item.count} records</td>
                       <td>{getVolatilityBadge(item.std_dev)}</td>
                     </tr>
                   ))}

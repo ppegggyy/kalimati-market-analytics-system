@@ -23,7 +23,7 @@ export function Sidebar({ isSidebarOpen, setIsSidebarOpen }) {
 
       <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="brand">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="brand-inner">
             <Leaf className="brand-icon" size={28} strokeWidth={2.5} />
             <span className="brand-name">Kalimati</span>
           </div>

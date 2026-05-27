@@ -6,6 +6,8 @@ import {
 } from 'recharts';
 import { Activity, TrendingUp, Banknote, AlertCircle, Calendar } from 'lucide-react';
 import { fetchProducts, fetchMovingAverage, fetchTrend, fetchLatestPrices } from '../api';
+import { useBreakpoint } from '../hooks/useMediaQuery';
+import { getChartMargin, getYAxisWidth, getAxisFontSize } from '../utils/chartHelpers';
 import '../styles/components.css';
 
 function calculateAdvancedSeasonality(data) {
@@ -59,6 +61,11 @@ function calculateShiftDistribution(data) {
 }
 
 export function Dashboard() {
+  const { isMobile, isTablet } = useBreakpoint();
+  const chartMargin = getChartMargin(isMobile, isTablet);
+  const yAxisWidth = getYAxisWidth(isMobile, isTablet);
+  const axisFontSize = getAxisFontSize(isMobile, isTablet);
+
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [startDate, setStartDate] = useState('2023-01-01');
@@ -237,7 +244,7 @@ export function Dashboard() {
             </div>
             <div className="chart-wrapper">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+                <AreaChart data={chartData} margin={chartMargin}>
                   <defs>
                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.15}/>
@@ -248,18 +255,18 @@ export function Dashboard() {
                   <XAxis 
                     dataKey="date" 
                     stroke="var(--text-light)" 
-                    fontSize={13} 
+                    fontSize={axisFontSize} 
                     tickLine={false} 
                     axisLine={false}
-                    minTickGap={40}
+                    minTickGap={isMobile ? 24 : 40}
                   />
                   <YAxis 
                     stroke="var(--text-light)" 
-                    fontSize={13} 
+                    fontSize={axisFontSize} 
                     tickLine={false} 
                     axisLine={false}
                     tickFormatter={(val) => `Rs ${val}`}
-                    width={80}
+                    width={yAxisWidth}
                   />
                   <Tooltip 
                     contentStyle={{ borderRadius: '16px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-lg)' }}
@@ -298,10 +305,10 @@ export function Dashboard() {
               </div>
               <div className="chart-wrapper-sm">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={seasonalData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <ComposedChart data={seasonalData} margin={chartMargin}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
-                    <XAxis dataKey="month" stroke="var(--text-light)" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="var(--text-light)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs ${val}`} width={80} />
+                    <XAxis dataKey="month" stroke="var(--text-light)" fontSize={axisFontSize} tickLine={false} axisLine={false} />
+                    <YAxis stroke="var(--text-light)" fontSize={axisFontSize} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs ${val}`} width={yAxisWidth} />
                     <Tooltip 
                       contentStyle={{ borderRadius: '16px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-lg)' }}
                       formatter={(val, name) => {
@@ -323,10 +330,10 @@ export function Dashboard() {
               </div>
               <div className="chart-wrapper-sm">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={seasonalData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <BarChart data={seasonalData} margin={chartMargin}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
-                    <XAxis dataKey="month" stroke="var(--text-light)" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="var(--text-light)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs ${val}`} width={80} />
+                    <XAxis dataKey="month" stroke="var(--text-light)" fontSize={axisFontSize} tickLine={false} axisLine={false} />
+                    <YAxis stroke="var(--text-light)" fontSize={axisFontSize} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs ${val}`} width={yAxisWidth} />
                     <Tooltip 
                       cursor={{ fill: 'var(--bg-app)' }}
                       contentStyle={{ borderRadius: '16px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-lg)' }}
@@ -350,8 +357,8 @@ export function Dashboard() {
                       data={shiftData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={80}
-                      outerRadius={110}
+                      innerRadius={isMobile ? '48%' : '55%'}
+                      outerRadius={isMobile ? '68%' : '78%'}
                       paddingAngle={5}
                       dataKey="value"
                       stroke="none"
@@ -364,7 +371,7 @@ export function Dashboard() {
                       contentStyle={{ borderRadius: '16px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-lg)' }}
                       formatter={(val) => [`${val} Days`, 'Occurrence']}
                     />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                    <Legend verticalAlign="bottom" height={isMobile ? 48 : 36} iconType="circle" wrapperStyle={{ fontSize: isMobile ? 11 : 12 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -377,17 +384,18 @@ export function Dashboard() {
               </div>
               <div className="chart-wrapper-sm">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData.slice(-14)} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <BarChart data={chartData.slice(-14)} margin={chartMargin}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
                     <XAxis 
                       dataKey="date" 
                       stroke="var(--text-light)" 
-                      fontSize={11} 
+                      fontSize={axisFontSize} 
                       tickLine={false} 
                       axisLine={false}
+                      minTickGap={isMobile ? 8 : 16}
                       tickFormatter={(d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     />
-                    <YAxis stroke="var(--text-light)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs ${val}`} width={80} />
+                    <YAxis stroke="var(--text-light)" fontSize={axisFontSize} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs ${val}`} width={yAxisWidth} />
                     <Tooltip 
                       cursor={{ fill: 'var(--bg-app)' }}
                       contentStyle={{ borderRadius: '16px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-lg)' }}
@@ -410,29 +418,29 @@ export function Dashboard() {
             {loadingLatest ? (
               <div style={{ padding: 20 }}>Loading latest prices...</div>
             ) : (
-              <div className="data-grid-container" style={{ maxHeight: 400, overflowY: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-card)', zIndex: 1 }}>
-                    <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <th style={{ padding: '12px 16px', color: 'var(--text-light)' }}>Product</th>
-                      <th style={{ padding: '12px 16px', color: 'var(--text-light)' }}>Unit</th>
-                      <th style={{ padding: '12px 16px', color: 'var(--text-light)' }}>Latest Date</th>
-                      <th style={{ padding: '12px 16px', color: 'var(--text-light)', textAlign: 'right' }}>Min Price</th>
-                      <th style={{ padding: '12px 16px', color: 'var(--text-light)', textAlign: 'right' }}>Max Price</th>
-                      <th style={{ padding: '12px 16px', color: 'var(--text-light)', textAlign: 'right' }}>Avg Price</th>
+              <div className="data-grid-container data-grid-scroll">
+                <table className="data-grid">
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th className="col-hide-mobile">Unit</th>
+                      <th className="col-hide-tablet">Latest Date</th>
+                      <th className="col-hide-mobile" style={{ textAlign: 'right' }}>Min Price</th>
+                      <th className="col-hide-mobile" style={{ textAlign: 'right' }}>Max Price</th>
+                      <th style={{ textAlign: 'right' }}>Avg Price</th>
                     </tr>
                   </thead>
                   <tbody>
                     {latestPricesData.map((item, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid var(--border-light)', backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)' }}>
-                        <td style={{ padding: '12px 16px', fontWeight: 500 }}>{item["Product"]}</td>
-                        <td style={{ padding: '12px 16px', color: 'var(--text-light)' }}>{item["Unit"]}</td>
-                        <td style={{ padding: '12px 16px', color: 'var(--text-light)' }}>
+                      <tr key={i}>
+                        <td style={{ fontWeight: 600 }}>{item["Product"]}</td>
+                        <td className="col-hide-mobile">{item["Unit"]}</td>
+                        <td className="col-hide-tablet">
                           {new Date(item["Date"]).toLocaleDateString()}
                         </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>Rs. {item["Min Price"]?.toFixed(2) || '—'}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>Rs. {item["Max Price"]?.toFixed(2) || '—'}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--accent-primary)' }}>
+                        <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item["Min Price"]?.toFixed(2) || '—'}</td>
+                        <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item["Max Price"]?.toFixed(2) || '—'}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--accent-primary)' }}>
                           Rs. {item["Avg Price"]?.toFixed(2) || '—'}
                         </td>
                       </tr>

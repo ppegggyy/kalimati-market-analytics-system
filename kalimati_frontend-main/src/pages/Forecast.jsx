@@ -5,9 +5,15 @@ import {
 } from 'recharts';
 import { AlertCircle, Target, TrendingUp, Calendar } from 'lucide-react';
 import { fetchProducts, fetchForecast } from '../api';
+import { useBreakpoint } from '../hooks/useMediaQuery';
+import { getChartMargin, getYAxisWidth, getAxisFontSize } from '../utils/chartHelpers';
 import '../styles/components.css';
 
 export function Forecast() {
+  const { isMobile, isTablet } = useBreakpoint();
+  const chartMargin = getChartMargin(isMobile, isTablet);
+  const yAxisWidth = getYAxisWidth(isMobile, isTablet);
+  const axisFontSize = getAxisFontSize(isMobile, isTablet);
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [steps, setSteps] = useState(30);
@@ -140,7 +146,7 @@ export function Forecast() {
             
             <div className="chart-wrapper">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+                <ComposedChart data={chartData} margin={chartMargin}>
                   <defs>
                     <linearGradient id="colorBand" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.15}/>
@@ -151,19 +157,19 @@ export function Forecast() {
                   <XAxis 
                     dataKey="date" 
                     stroke="var(--text-light)" 
-                    fontSize={13} 
+                    fontSize={axisFontSize} 
                     tickLine={false} 
                     axisLine={false}
-                    minTickGap={40}
+                    minTickGap={isMobile ? 24 : 40}
                     tickFormatter={(d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   />
                   <YAxis 
                     stroke="var(--text-light)" 
-                    fontSize={13} 
+                    fontSize={axisFontSize} 
                     tickLine={false} 
                     axisLine={false}
                     tickFormatter={(val) => `Rs ${val}`}
-                    width={80}
+                    width={yAxisWidth}
                   />
                   <Tooltip 
                     contentStyle={{ borderRadius: '16px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-lg)' }}
