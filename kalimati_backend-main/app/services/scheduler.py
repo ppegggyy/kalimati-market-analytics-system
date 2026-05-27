@@ -10,7 +10,7 @@ from app.core.config import settings
 
 # Add the Data Engineering folder to sys.path so we can import the pipeline
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-DATA_ENG_DIR = os.path.join(PROJECT_ROOT, "Data Engineering")
+DATA_ENG_DIR = os.path.join(PROJECT_ROOT, "data_engineering")
 if DATA_ENG_DIR not in sys.path:
     sys.path.append(DATA_ENG_DIR)
 
