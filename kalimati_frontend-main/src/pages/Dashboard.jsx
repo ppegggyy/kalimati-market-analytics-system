@@ -66,10 +66,20 @@ export function Dashboard() {
   const yAxisWidth = getYAxisWidth(isMobile, isTablet);
   const axisFontSize = getAxisFontSize(isMobile, isTablet);
 
+  const getInitialStartDate = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 6);
+    return d.toISOString().split('T')[0];
+  };
+
+  const getInitialEndDate = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState('');
-  const [startDate, setStartDate] = useState('2023-01-01');
-  const [endDate, setEndDate] = useState('2026-05-22');
+  const [startDate, setStartDate] = useState(getInitialStartDate());
+  const [endDate, setEndDate] = useState(getInitialEndDate());
   
   const [chartData, setChartData] = useState([]);
   const [seasonalData, setSeasonalData] = useState([]);
