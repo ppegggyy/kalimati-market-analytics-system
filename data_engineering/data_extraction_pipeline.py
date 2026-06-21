@@ -5,8 +5,8 @@ Kalimati Wholesale Market Price Monitoring System
 
 Stage 1 – extract()  : Fetch & consolidate raw CSVs from GitHub.
 Stage 2 – transform(): Clean, normalise, impute, and enrich.
-Stage 3 – validate() : [TBD]
-Stage 4 – load()     : [TBD]
+Stage 3 – validate() 
+Stage 4 – load()     
 """
 
 import calendar
