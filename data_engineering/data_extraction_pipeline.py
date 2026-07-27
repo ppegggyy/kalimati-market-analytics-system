@@ -14,7 +14,7 @@ import io
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date as date_type, datetime, timedelta, timezone
 from typing import Optional
 
 import numpy as np
@@ -275,6 +275,8 @@ class DataPipeline:
     REQUEST_TIMEOUT: int = 15
     RATE_LIMIT_DELAY: float = 0.05
     MAX_RETRIES: int = 3
+    START_DATE: Optional[date_type] = None  # targeted fetch start
+    END_DATE: Optional[date_type] = None    # targeted fetch end
 
     def __init__(self):
         self._session = self._build_session()
@@ -306,11 +308,20 @@ class DataPipeline:
 
     def _generate_urls(self) -> list[tuple[str, int, int, int]]:
         entries = []
-        for year in range(self.START_YEAR, self.END_YEAR + 1):
-            for month in range(1, 13):
-                for day in range(1, calendar.monthrange(year, month)[1] + 1):
-                    url = f"{GITHUB_RAW_BASE}/{year}/{month:02d}/{day:02d}.csv"
-                    entries.append((url, year, month, day))
+        if self.START_DATE and self.END_DATE:
+            # Targeted mode — only fetch the exact days needed
+            current = self.START_DATE
+            while current <= self.END_DATE:
+                url = f"{GITHUB_RAW_BASE}/{current.year}/{current.month:02d}/{current.day:02d}.csv"
+                entries.append((url, current.year, current.month, current.day))
+                current += timedelta(days=1)
+        else:
+            # Full-year sweep mode (initial load)
+            for year in range(self.START_YEAR, self.END_YEAR + 1):
+                for month in range(1, 13):
+                    for day in range(1, calendar.monthrange(year, month)[1] + 1):
+                        url = f"{GITHUB_RAW_BASE}/{year}/{month:02d}/{day:02d}.csv"
+                        entries.append((url, year, month, day))
         logger.info("Generated %d candidate URLs.", len(entries))
         return entries
 

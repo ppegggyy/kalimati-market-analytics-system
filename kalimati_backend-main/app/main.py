@@ -20,7 +20,7 @@ from app.api import api_router
 from app.core.config import settings
 from app.db.bootstrap import ensure_db_objects
 from app.db.session import Base, engine
-from app.services.scheduler import start_scheduler, stop_scheduler
+from app.services.scheduler import start_scheduler, stop_scheduler, run_startup_etl
 
 # ── Logging ────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -48,6 +48,7 @@ async def lifespan(app: FastAPI):
     ensure_db_objects()
     _create_tables()
     start_scheduler()
+    run_startup_etl()
     yield
     stop_scheduler()
     logger.info("Shutting down %s.", settings.app_name)

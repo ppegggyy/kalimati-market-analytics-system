@@ -70,11 +70,13 @@ export function Dashboard() {
   const getInitialStartDate = () => {
     const d = new Date();
     d.setMonth(d.getMonth() - 6);
-    return d.toISOString().split('T')[0];
+    // Clamp day to avoid month-overflow (e.g. Aug 31 - 6 months = Mar 3 bug)
+    if (d.getDate() !== new Date().getDate()) d.setDate(0);
+    return d.toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
   };
 
   const getInitialEndDate = () => {
-    return new Date().toISOString().split('T')[0];
+    return new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
   };
 
   const [products, setProducts] = useState([]);
@@ -373,6 +375,7 @@ export function Dashboard() {
                     strokeWidth={2.5}
                     fillOpacity={1} 
                     fill="url(#colorPrice)" 
+                    connectNulls={true}
                     name={selectedProduct || "Actual Price"}
                   />
                   <Line 
@@ -382,10 +385,11 @@ export function Dashboard() {
                     strokeWidth={2} 
                     strokeDasharray="6 4" 
                     dot={false}
+                    connectNulls={true}
                     name={`${selectedProduct} 7-Day MA`}
                   />
-                  {compareProduct && <Line type="monotone" dataKey="comparePrice" stroke="var(--accent-warning)" strokeWidth={2.5} dot={false} name={compareProduct} />}
-                  {compareProduct && <Line type="monotone" dataKey="compareMovingAvg" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="6 4" dot={false} name={`${compareProduct} 7-Day MA`} />}
+                  {compareProduct && <Line type="monotone" dataKey="comparePrice" stroke="var(--accent-warning)" strokeWidth={2.5} dot={false} connectNulls={true} name={compareProduct} />}
+                  {compareProduct && <Line type="monotone" dataKey="compareMovingAvg" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls={true} name={`${compareProduct} 7-Day MA`} />}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
