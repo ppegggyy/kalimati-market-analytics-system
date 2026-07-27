@@ -273,7 +273,7 @@ def forecast_prices(
     if not as_of:
         raise HTTPException(status_code=404, detail=f"No price data found for product '{payload.product}'.")
         
-    cached = crud.get_cached_analytics(db, payload.product, "forecast", as_of, payload.steps)
+    cached = crud.get_cached_analytics(db, payload.product, "forecast_v2", as_of, payload.steps)
     if cached:
         return ForecastResponse(**cached)
 
@@ -295,5 +295,5 @@ def forecast_prices(
         model_used=f"ARIMA{_forecast_service.model_order}",
         forecast=forecast_points,
     )
-    crud.set_cached_analytics(db, payload.product, "forecast", as_of, jsonable_encoder(resp), payload.steps)
+    crud.set_cached_analytics(db, payload.product, "forecast_v2", as_of, jsonable_encoder(resp), payload.steps)
     return resp

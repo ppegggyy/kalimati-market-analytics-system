@@ -384,27 +384,8 @@ export function Dashboard() {
                     dot={false}
                     name={`${selectedProduct} 7-Day MA`}
                   />
-                  {compareProduct && (
-                    <>
-                      <Line 
-                        type="monotone" 
-                        dataKey="comparePrice" 
-                        stroke="var(--accent-warning)" 
-                        strokeWidth={2.5}
-                        dot={false}
-                        name={compareProduct}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="compareMovingAvg" 
-                        stroke="#8b5cf6" 
-                        strokeWidth={2} 
-                        strokeDasharray="6 4" 
-                        dot={false}
-                        name={`${compareProduct} 7-Day MA`}
-                      />
-                    </>
-                  )}
+                  {compareProduct && <Line type="monotone" dataKey="comparePrice" stroke="var(--accent-warning)" strokeWidth={2.5} dot={false} name={compareProduct} />}
+                  {compareProduct && <Line type="monotone" dataKey="compareMovingAvg" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="6 4" dot={false} name={`${compareProduct} 7-Day MA`} />}
                 </AreaChart>
               </ResponsiveContainer>
             </div>
