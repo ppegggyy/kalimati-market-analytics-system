@@ -31,13 +31,16 @@ def _get_db_config():
     """Extract psycopg2 connection config from the SQLAlchemy engine URL."""
     from app.db.session import engine
     url = engine.url
-    return {
+    config = {
         "host": url.host,
         "port": url.port or 5432,
         "dbname": url.database,
         "user": url.username,
         "password": url.password,
     }
+    for key, value in url.query.items():
+        config[key] = value
+    return config
 
 
 def _purge_stale_cache(db_config: dict):

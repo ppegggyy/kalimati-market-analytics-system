@@ -34,7 +34,10 @@ export async function fetchMovingAverage(
   if (startDate) params.append('start_date', startDate);
   if (endDate)   params.append('end_date',   endDate);
   const res = await fetch(`${BASE}/analytics/moving-average?${params}`);
-  if (!res.ok) throw new Error('Failed to fetch moving average');
+  if (!res.ok) {
+    if (res.status === 404) return [];
+    throw new Error('Failed to fetch moving average');
+  }
   return res.json();
 }
 
@@ -85,7 +88,10 @@ export async function fetchTrend(product, startDate = null, endDate = null) {
   if (startDate) params.append('start_date', startDate);
   if (endDate)   params.append('end_date',   endDate);
   const res = await fetch(`${BASE}/analytics/trend?${params}`);
-  if (!res.ok) throw new Error('Failed to fetch trend');
+  if (!res.ok) {
+    if (res.status === 404) return { overall_change_pct: 0, highest_price: { value: 0 }, lowest_price: { value: 0 }, mean_price: 0, volatility: 0 };
+    throw new Error('Failed to fetch trend');
+  }
   return res.json();
 }
 
