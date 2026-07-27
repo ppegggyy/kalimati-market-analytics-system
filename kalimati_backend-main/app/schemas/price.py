@@ -121,3 +121,20 @@ class ForecastResponse(BaseModel):
     product: str
     model_used: str = "ARIMA"
     forecast: List[ForecastPoint]
+
+
+class BulkVolatilityRequest(BaseModel):
+    products: List[str] = Field(..., description="List of product names")
+    start_date: Optional[date_type] = None
+    end_date: Optional[date_type] = None
+
+
+class BulkVolatilityItem(BaseModel):
+    product: str
+    unit: Optional[str] = None
+    std_dev_avg_price: float
+    record_count: int
+
+
+class BulkVolatilityResponse(BaseModel):
+    results: List[BulkVolatilityItem]

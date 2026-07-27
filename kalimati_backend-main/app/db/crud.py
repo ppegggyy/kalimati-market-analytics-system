@@ -86,29 +86,29 @@ def get_records_as_dataframe(
         "Date", "Product", "Unit", "Max Price", "Min Price", "Avg Price"
     Do NOT rename these columns.
     """
-    query = db.query(PriceRecord).filter(PriceRecord.product == product)
+    query = db.query(
+        PriceRecord.date.label("Date"),
+        PriceRecord.product.label("Product"),
+        PriceRecord.unit.label("Unit"),
+        PriceRecord.max_price.label("Max Price"),
+        PriceRecord.min_price.label("Min Price"),
+        PriceRecord.avg_price.label("Avg Price"),
+    ).filter(PriceRecord.product == product)
     if start_date:
         query = query.filter(PriceRecord.date >= start_date)
     if end_date:
         query = query.filter(PriceRecord.date <= end_date)
-    records = query.order_by(PriceRecord.date.asc()).all()
+    query = query.order_by(PriceRecord.date.asc())
 
-    if not records:
+    result = db.execute(query.statement)
+    rows = result.fetchall()
+
+    if not rows:
         return pd.DataFrame(
             columns=["Date", "Product", "Unit", "Max Price", "Min Price", "Avg Price"]
         )
 
-    return pd.DataFrame([
-        {
-            "Date":      r.date,
-            "Product":   r.product,
-            "Unit":      r.unit,
-            "Max Price": r.max_price,
-            "Min Price": r.min_price,
-            "Avg Price": r.avg_price,
-        }
-        for r in records
-    ])
+    return pd.DataFrame(rows, columns=["Date", "Product", "Unit", "Max Price", "Min Price", "Avg Price"])
 
 
 # ── Read — distinct products ─────────────────────────────────────────────────
@@ -129,25 +129,12 @@ def get_unique_products(db: Session) -> list[str]:
 def get_latest_prices(db: Session) -> list[PriceRecord]:
     """Return the single most recent price record for each product.
 
-    Uses a subquery to find max(date) per product, then fetches those
-    exact rows — gives the 'today's market' snapshot across all products.
+    Uses PostgreSQL DISTINCT ON for a single index-scan pass.
     """
-    subquery = (
-        db.query(
-            PriceRecord.product,
-            func.max(PriceRecord.date).label("max_date"),
-        )
-        .group_by(PriceRecord.product)
-        .subquery()
-    )
     return (
         db.query(PriceRecord)
-        .join(
-            subquery,
-            (PriceRecord.product == subquery.c.product)
-            & (PriceRecord.date == subquery.c.max_date),
-        )
-        .order_by(PriceRecord.product)
+        .distinct(PriceRecord.product)
+        .order_by(PriceRecord.product, PriceRecord.date.desc())
         .all()
     )
 

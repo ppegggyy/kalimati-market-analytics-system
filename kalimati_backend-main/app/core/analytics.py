@@ -5,54 +5,16 @@
 # All functions accept a Pandas DataFrame whose columns match the
 # original Kalimati CSV headers (with spaces):
 #   Date | Product | Unit | Max Price | Min Price | Avg Price
-#
-# Caching:
-#   Heavy calculations are memoised with functools.lru_cache.
-#   Because DataFrames are not hashable, we convert them to a
-#   frozenset of tuples before passing into cached helpers.
 # ─────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
 
-import functools
-from datetime import date
 from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 from app.core.config import settings
-
-
-# ── Internal cached helper ─────────────────────────────────────────
-
-@functools.lru_cache(maxsize=128)
-def _cached_std_dev(data_key: tuple[tuple, ...]) -> float:
-    """Compute standard deviation of Avg Price from a hashable key.
-
-    Args:
-        data_key: Tuple of (date, avg_price) pairs — produced by
-                  _df_to_cache_key() so lru_cache can hash it.
-
-    Returns:
-        Population std-dev of the Avg Price column (float).
-    """
-    if not data_key:
-        return 0.0
-    prices = [row[1] for row in data_key]   # second element is avg_price
-    return float(np.std(prices))
-
-
-def _df_to_cache_key(df: pd.DataFrame) -> tuple[tuple, ...]:
-    """Convert a DataFrame slice to a hashable tuple for lru_cache.
-
-    Only (Date, Avg Price) columns are used — enough to uniquely
-    represent the series for volatility purposes.
-    """
-    return tuple(
-        (str(row["Date"]), float(row["Avg Price"]))
-        for _, row in df.iterrows()
-    )
 
 
 # ── Public API ─────────────────────────────────────────────────────
@@ -66,16 +28,10 @@ def calculate_volatility(df: pd.DataFrame) -> float:
 
     Returns:
         Standard deviation (float). Returns 0.0 for < 2 records.
-
-    Example:
-        >>> vol = calculate_volatility(product_df)
-        >>> print(f"Volatility: {vol:.2f}")
     """
     if df.empty or len(df) < 2:
         return 0.0
-
-    cache_key = _df_to_cache_key(df[["Date", "Avg Price"]])
-    return _cached_std_dev(cache_key)
+    return float(np.std(df["Avg Price"].values))
 
 
 def detect_price_spikes(

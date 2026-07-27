@@ -27,6 +27,9 @@ from app.schemas.price import (
     SpikeDetectionResponse,
     TrendResponse,
     VolatilityResponse,
+    BulkVolatilityRequest,
+    BulkVolatilityItem,
+    BulkVolatilityResponse,
 )
 from app.services.forecast_service import ForecastService
 
@@ -84,6 +87,37 @@ def get_volatility(
     )
     crud.set_cached_analytics(db, product, metric_key, as_of, jsonable_encoder(resp))
     return resp
+
+
+# ── POST /analytics/volatility/bulk ──────────────────────────────────────────
+
+@router.post(
+    "/volatility/bulk",
+    response_model=BulkVolatilityResponse,
+    summary="Bulk price volatility for multiple products",
+    description=(
+        "Compute standard deviation of Avg Price for a list of products "
+        "in a single request. Eliminates the N+1 network overhead."
+    ),
+)
+def get_bulk_volatility(
+    payload: BulkVolatilityRequest,
+    db: Session = Depends(get_db),
+):
+    results = []
+    for product_name in payload.products:
+        df = crud.get_records_as_dataframe(db, product_name, payload.start_date, payload.end_date)
+        df = df.dropna(subset=["Avg Price"])
+        if df.empty:
+            continue
+        std_dev = calculate_volatility(df)
+        results.append(BulkVolatilityItem(
+            product=product_name,
+            unit=str(df["Unit"].iloc[0]) if not df.empty else None,
+            std_dev_avg_price=round(std_dev, 4),
+            record_count=len(df),
+        ))
+    return BulkVolatilityResponse(results=results)
 
 
 # ── GET /analytics/spikes ────────────────────────────────────────────────────

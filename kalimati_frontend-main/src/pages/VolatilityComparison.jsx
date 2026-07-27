@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { AlertCircle } from 'lucide-react';
-import { fetchProducts, fetchVolatility } from '../api';
+import { fetchProducts, fetchBulkVolatility } from '../api';
 import { useBreakpoint } from '../hooks/useMediaQuery';
 import { getYAxisWidth, getAxisFontSize, getVolatilityChartMargin, getVolatilityXAxisProps } from '../utils/chartHelpers';
 import '../styles/components.css';
@@ -29,23 +29,15 @@ export function VolatilityComparison() {
       try {
         const allProducts = await fetchProducts();
         const top20 = allProducts.slice(0, MAX_PRODUCTS);
-        const results = await Promise.allSettled(
-          top20.map((product) => fetchVolatility(product))
-        );
-
-        const data = results
-          .map((r, i) => {
-            if (r.status === 'fulfilled') {
-              return {
-                name: top20[i],
-                std_dev: r.value.std_dev_avg_price,
-                unit: r.value.unit,
-                count: r.value.record_count,
-              };
-            }
-            return null;
-          })
-          .filter(Boolean)
+        
+        const response = await fetchBulkVolatility(top20);
+        const data = response.results
+          .map(r => ({
+            name: r.product,
+            std_dev: r.std_dev_avg_price,
+            unit: r.unit || 'Kg',
+            count: r.record_count,
+          }))
           .sort((a, b) => b.std_dev - a.std_dev);
 
         setVolatilityData(data);

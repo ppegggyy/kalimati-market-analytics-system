@@ -1,6 +1,6 @@
 # app/db/models.py
 
-from sqlalchemy import Boolean, Column, Date, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 
 from .session import Base
@@ -38,6 +38,10 @@ class PriceRecord(Base):
     ingested_at    = Column(DateTime(timezone=True), nullable=True)
     transformed_at = Column(DateTime(timezone=True), nullable=True)
 
+    __table_args__ = (
+        Index("ix_prices_product_date", "product", "date"),
+    )
+
     # Fix 6: Pydantic schema uses field name 'record_date'; ORM column is 'date'.
     # This property bridges the gap so from_attributes=True serialisation works.
     @property
@@ -61,6 +65,10 @@ class AnalyticsCache(Base):
     payload = Column(JSONB, nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("product", "metric_type", "window_days", "as_of_date", name="uq_analytics_cache_lookup"),
+    )
 
     def __repr__(self) -> str:
         return (

@@ -55,6 +55,27 @@ export async function fetchVolatility(
   return res.json();
 }
 
+// ── Bulk Volatility ─────────────────────────────────────────────────────────
+// Returns: { results: [{ product, unit, std_dev_avg_price, record_count }, ...] }
+
+export async function fetchBulkVolatility(
+  products,
+  startDate = null,
+  endDate = null
+) {
+  const payload = { products };
+  if (startDate) payload.start_date = startDate;
+  if (endDate) payload.end_date = endDate;
+
+  const res = await fetch(`${BASE}/analytics/volatility/bulk`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('Failed to fetch bulk volatility');
+  return res.json();
+}
+
 // ── Trend summary ───────────────────────────────────────────────────────────
 // Returns: { overall_change_pct, highest_price, lowest_price,
 //            mean_price, volatility }

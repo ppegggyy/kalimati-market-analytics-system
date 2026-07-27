@@ -1,10 +1,10 @@
 // src/pages/Dashboard.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, ComposedChart, Line, PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { Activity, TrendingUp, Banknote, AlertCircle, Calendar } from 'lucide-react';
+import { Activity, TrendingUp, Banknote, AlertCircle, Calendar, Download } from 'lucide-react';
 import { fetchProducts, fetchMovingAverage, fetchTrend, fetchLatestPrices } from '../api';
 import { useBreakpoint } from '../hooks/useMediaQuery';
 import { getChartMargin, getYAxisWidth, getAxisFontSize } from '../utils/chartHelpers';
@@ -66,6 +66,7 @@ export function Dashboard() {
   const yAxisWidth = getYAxisWidth(isMobile, isTablet);
   const axisFontSize = getAxisFontSize(isMobile, isTablet);
 
+  // Lazy initializer functions — only run once on mount, not every render
   const getInitialStartDate = () => {
     const d = new Date();
     d.setMonth(d.getMonth() - 6);
@@ -78,13 +79,19 @@ export function Dashboard() {
 
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState('');
-  const [startDate, setStartDate] = useState(getInitialStartDate());
-  const [endDate, setEndDate] = useState(getInitialEndDate());
+  const [compareProduct, setCompareProduct] = useState('');
+  const [startDate, setStartDate] = useState(getInitialStartDate);
+  const [endDate, setEndDate] = useState(getInitialEndDate);
   
   const [chartData, setChartData] = useState([]);
-  const [seasonalData, setSeasonalData] = useState([]);
-  const [shiftData, setShiftData] = useState([]);
+  const [rawMaData, setRawMaData] = useState([]);
   const [trend, setTrend] = useState(null);
+
+  // Memoize expensive derived data — only recompute when raw data changes
+  const seasonalData = useMemo(() => calculateAdvancedSeasonality(rawMaData), [rawMaData]);
+  const shiftData = useMemo(() => calculateShiftDistribution(rawMaData), [rawMaData]);
+  const compareProductOptions = useMemo(() => products.filter(p => p !== selectedProduct), [products, selectedProduct]);
+  const recentChartData = useMemo(() => chartData.slice(-14), [chartData]);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -111,25 +118,79 @@ export function Dashboard() {
     setLoading(true);
     setError(null);
 
-    Promise.all([
+    const fetches = [
       fetchMovingAverage(selectedProduct, 7, startDate, endDate),
       fetchTrend(selectedProduct, startDate, endDate),
-    ])
-      .then(([maData, trendData]) => {
-        setChartData(
-          maData.map((row) => ({
-            date: row['Date'],
-            price: row['Avg Price'],
-            movingAvg: row['moving_avg_7d'] ?? null,
-          }))
-        );
-        setSeasonalData(calculateAdvancedSeasonality(maData));
-        setShiftData(calculateShiftDistribution(maData));
+    ];
+
+    if (compareProduct) {
+      fetches.push(fetchMovingAverage(compareProduct, 7, startDate, endDate));
+    }
+
+    Promise.all(fetches)
+      .then(([maData, trendData, compareMaData]) => {
+        let mergedData = maData.map((row) => ({
+          date: row['Date'],
+          price: row['Avg Price'],
+          movingAvg: row['moving_avg_7d'] ?? null,
+        }));
+
+        if (compareProduct && compareMaData) {
+          // Map compare data by date for merging
+          const compareMap = new Map(compareMaData.map(r => [r['Date'], r]));
+          mergedData = mergedData.map(row => {
+            const match = compareMap.get(row.date);
+            return {
+              ...row,
+              comparePrice: match ? match['Avg Price'] : null,
+              compareMovingAvg: match ? match['moving_avg_7d'] : null,
+            };
+          });
+        }
+
+        setChartData(mergedData);
+        setRawMaData(maData);
         setTrend(trendData);
       })
       .catch(() => setError('Failed to load chart data. Check backend logs.'))
       .finally(() => setLoading(false));
-  }, [selectedProduct, startDate, endDate]);
+  }, [selectedProduct, compareProduct, startDate, endDate]);
+
+  const handleDownloadCSV = () => {
+    if (chartData.length === 0) return;
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    
+    // Headers
+    if (compareProduct) {
+      csvContent += `Date,${selectedProduct} Actual Price,${selectedProduct} 7-Day MA,${compareProduct} Actual Price,${compareProduct} 7-Day MA\n`;
+    } else {
+      csvContent += `Date,Product,Actual Price,7-Day MA\n`;
+    }
+    
+    // Rows
+    chartData.forEach(row => {
+      const date = row.date;
+      const p1 = row.price !== null ? row.price : '';
+      const ma1 = row.movingAvg !== null ? row.movingAvg : '';
+      
+      if (compareProduct) {
+        const p2 = row.comparePrice !== null && row.comparePrice !== undefined ? row.comparePrice : '';
+        const ma2 = row.compareMovingAvg !== null && row.compareMovingAvg !== undefined ? row.compareMovingAvg : '';
+        csvContent += `${date},${p1},${ma1},${p2},${ma2}\n`;
+      } else {
+        csvContent += `${date},${selectedProduct},${p1},${ma1}\n`;
+      }
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `market_analysis_${startDate}_to_${endDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const latestPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : 0;
   const prevPrice = chartData.length > 1 ? chartData[chartData.length - 2].price : latestPrice;
@@ -159,6 +220,18 @@ export function Dashboard() {
           </select>
         </div>
         <div className="control-group">
+          <label htmlFor="compare-product">Compare With (Optional)</label>
+          <select
+            id="compare-product"
+            value={compareProduct}
+            onChange={(e) => setCompareProduct(e.target.value)}
+            className="input-select"
+          >
+            <option value="">None</option>
+            {compareProductOptions.map((p) => <option key={`comp-${p}`} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div className="control-group">
           <label htmlFor="start-date">Analysis Start</label>
           <input
             id="start-date"
@@ -168,15 +241,26 @@ export function Dashboard() {
             className="input-date"
           />
         </div>
-        <div className="control-group">
-          <label htmlFor="end-date">Analysis End</label>
-          <input
-            id="end-date"
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="input-date"
-          />
+        <div className="control-group" style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="end-date">Analysis End</label>
+            <input
+              id="end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="input-date"
+              style={{ width: '100%' }}
+            />
+          </div>
+          <button 
+            onClick={handleDownloadCSV} 
+            className="btn-outline" 
+            title="Download CSV"
+            style={{ padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-card)', cursor: 'pointer', height: '42px', color: 'var(--text-light)' }}
+          >
+            <Download size={20} />
+          </button>
         </div>
       </div>
 
@@ -289,17 +373,38 @@ export function Dashboard() {
                     strokeWidth={2.5}
                     fillOpacity={1} 
                     fill="url(#colorPrice)" 
-                    name="Actual Price"
+                    name={selectedProduct || "Actual Price"}
                   />
-                  <Area 
+                  <Line 
                     type="monotone" 
                     dataKey="movingAvg" 
                     stroke="var(--accent-info)" 
                     strokeWidth={2} 
                     strokeDasharray="6 4" 
-                    fill="none" 
-                    name="7-Day MA"
+                    dot={false}
+                    name={`${selectedProduct} 7-Day MA`}
                   />
+                  {compareProduct && (
+                    <>
+                      <Line 
+                        type="monotone" 
+                        dataKey="comparePrice" 
+                        stroke="var(--accent-warning)" 
+                        strokeWidth={2.5}
+                        dot={false}
+                        name={compareProduct}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="compareMovingAvg" 
+                        stroke="#8b5cf6" 
+                        strokeWidth={2} 
+                        strokeDasharray="6 4" 
+                        dot={false}
+                        name={`${compareProduct} 7-Day MA`}
+                      />
+                    </>
+                  )}
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -394,7 +499,7 @@ export function Dashboard() {
               </div>
               <div className="chart-wrapper-sm">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData.slice(-14)} margin={chartMargin}>
+                  <BarChart data={recentChartData} margin={chartMargin}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
                     <XAxis 
                       dataKey="date" 
@@ -443,15 +548,15 @@ export function Dashboard() {
                   <tbody>
                     {latestPricesData.map((item, i) => (
                       <tr key={i}>
-                        <td style={{ fontWeight: 600 }}>{item["Product"]}</td>
-                        <td className="col-hide-mobile">{item["Unit"]}</td>
+                        <td style={{ fontWeight: 600 }}>{item.product}</td>
+                        <td className="col-hide-mobile">{item.unit}</td>
                         <td className="col-hide-tablet">
-                          {new Date(item["Date"]).toLocaleDateString()}
+                          {new Date(item.record_date).toLocaleDateString()}
                         </td>
-                        <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item["Min Price"]?.toFixed(2) || '—'}</td>
-                        <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item["Max Price"]?.toFixed(2) || '—'}</td>
+                        <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item.min_price?.toFixed(2) || '—'}</td>
+                        <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item.max_price?.toFixed(2) || '—'}</td>
                         <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--accent-primary)' }}>
-                          Rs. {item["Avg Price"]?.toFixed(2) || '—'}
+                          Rs. {item.avg_price?.toFixed(2) || '—'}
                         </td>
                       </tr>
                     ))}

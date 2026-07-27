@@ -108,13 +108,22 @@ class ForecastService:
         if last_date is None:
             last_date = pd.to_datetime(df["Date"].max()).date()
 
+        today = date.today()
+        gap_days = (today - last_date).days
+        
+        total_steps = steps
+        start_index = 0
+        if gap_days > 0:
+            total_steps = steps + gap_days
+            start_index = gap_days
+
         # --- Flat fallback if ARIMA failed to fit ---
         if self._model is None:
             logger.warning("ARIMA unavailable — returning flat forecast.")
             p = self._last_price
             return [
                 ForecastPoint(
-                    record_date=last_date + timedelta(days=i + 1),   # Fix 14: record_date=, not date=
+                    record_date=today + timedelta(days=i),
                     predicted_avg_price=round(p, 2),
                     lower_bound=round(p * 0.85, 2),
                     upper_bound=round(p * 1.15, 2),
@@ -123,15 +132,16 @@ class ForecastService:
             ]
 
         # --- Real ARIMA forecast ---
-        forecast_result = self._model.get_forecast(steps=steps)
+        forecast_result = self._model.get_forecast(steps=total_steps)
         predicted_mean  = forecast_result.predicted_mean
         conf_int        = forecast_result.conf_int(alpha=0.05)   # 95 % CI
 
         points: list[ForecastPoint] = []
         for i in range(steps):
-            predicted = float(predicted_mean.iloc[i])
-            lower     = float(conf_int.iloc[i, 0])
-            upper     = float(conf_int.iloc[i, 1])
+            idx = start_index + i
+            predicted = float(predicted_mean.iloc[idx])
+            lower     = float(conf_int.iloc[idx, 0])
+            upper     = float(conf_int.iloc[idx, 1])
 
             # Prices cannot be negative
             predicted = max(0.0, predicted)
@@ -140,7 +150,7 @@ class ForecastService:
 
             points.append(
                 ForecastPoint(
-                    record_date=last_date + timedelta(days=i + 1),   # Fix 14: record_date=, not date=
+                    record_date=today + timedelta(days=i),
                     predicted_avg_price=round(predicted, 2),
                     lower_bound=round(lower, 2),
                     upper_bound=round(upper, 2),
