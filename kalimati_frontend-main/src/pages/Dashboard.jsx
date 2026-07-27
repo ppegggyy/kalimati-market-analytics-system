@@ -338,7 +338,7 @@ export function Dashboard() {
             </div>
             <div className="chart-wrapper">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={chartMargin}>
+                <ComposedChart data={chartData} margin={chartMargin}>
                   <defs>
                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.15}/>
@@ -364,7 +364,7 @@ export function Dashboard() {
                   />
                   <Tooltip 
                     contentStyle={{ borderRadius: '16px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-lg)' }}
-                    formatter={(val) => [`Rs. ${Number(val).toFixed(2)}`]}
+                    formatter={(val, name) => [`Rs. ${Number(val).toFixed(2)}`, name]}
                   />
                   <Area 
                     type="monotone" 
@@ -386,7 +386,7 @@ export function Dashboard() {
                   />
                   {compareProduct && <Line type="monotone" dataKey="comparePrice" stroke="var(--accent-warning)" strokeWidth={2.5} dot={false} name={compareProduct} />}
                   {compareProduct && <Line type="monotone" dataKey="compareMovingAvg" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="6 4" dot={false} name={`${compareProduct} 7-Day MA`} />}
-                </AreaChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
