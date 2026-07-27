@@ -115,7 +115,7 @@ class ForecastService:
         start_index = 0
         if gap_days > 0:
             total_steps = steps + gap_days
-            start_index = gap_days
+            start_index = gap_days - 1
 
         # --- Flat fallback if ARIMA failed to fit ---
         if self._model is None:

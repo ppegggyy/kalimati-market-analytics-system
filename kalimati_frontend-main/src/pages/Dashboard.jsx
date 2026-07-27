@@ -241,26 +241,26 @@ export function Dashboard() {
             className="input-date"
           />
         </div>
-        <div className="control-group" style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="end-date">Analysis End</label>
+        <div className="control-group">
+          <label htmlFor="end-date">Analysis End</label>
+          <div style={{ display: 'flex', gap: '8px' }}>
             <input
               id="end-date"
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               className="input-date"
-              style={{ width: '100%' }}
+              style={{ flex: 1 }}
             />
+            <button 
+              onClick={handleDownloadCSV} 
+              className="btn-outline" 
+              title="Download CSV"
+              style={{ padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', border: '1px solid var(--border-dark)', backgroundColor: 'var(--bg-app)', cursor: 'pointer', height: '45px', width: '45px', color: 'var(--text-main)', flexShrink: 0 }}
+            >
+              <Download size={20} />
+            </button>
           </div>
-          <button 
-            onClick={handleDownloadCSV} 
-            className="btn-outline" 
-            title="Download CSV"
-            style={{ padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-card)', cursor: 'pointer', height: '42px', color: 'var(--text-light)' }}
-          >
-            <Download size={20} />
-          </button>
         </div>
       </div>
 
@@ -548,15 +548,15 @@ export function Dashboard() {
                   <tbody>
                     {latestPricesData.map((item, i) => (
                       <tr key={i}>
-                        <td style={{ fontWeight: 600 }}>{item.product}</td>
-                        <td className="col-hide-mobile">{item.unit}</td>
+                        <td style={{ fontWeight: 600 }}>{item["Product"]}</td>
+                        <td className="col-hide-mobile">{item["Unit"]}</td>
                         <td className="col-hide-tablet">
-                          {new Date(item.record_date).toLocaleDateString()}
+                          {new Date(item["Date"]).toLocaleDateString()}
                         </td>
-                        <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item.min_price?.toFixed(2) || '—'}</td>
-                        <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item.max_price?.toFixed(2) || '—'}</td>
+                        <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item["Min Price"]?.toFixed(2) || '—'}</td>
+                        <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item["Max Price"]?.toFixed(2) || '—'}</td>
                         <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--accent-primary)' }}>
-                          Rs. {item.avg_price?.toFixed(2) || '—'}
+                          Rs. {item["Avg Price"]?.toFixed(2) || '—'}
                         </td>
                       </tr>
                     ))}
