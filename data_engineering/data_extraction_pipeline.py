@@ -559,82 +559,79 @@ class DataPipeline:
         return df
 
 
+import pandas as pd
+from typing import Optional
+import logging
+from sqlalchemy import text
+
 # ---------------------------------------------------------------------------
 # STAGE 3 - LOAD
 # ---------------------------------------------------------------------------
-import psycopg2
-from psycopg2.extras import execute_values
-
-DB_CONFIG = {
-    "host":     "localhost",
-    "port":     5432,
-    "dbname":   "kalimati",
-    "user":     "postgres",
-    "password": "admin123"   
-}
 
 class DatabaseLoader:
-    def __init__(self, config: dict):
-        self.config = config
-
-    def get_connection(self):
-        return psycopg2.connect(**self.config)
+    def __init__(self, engine):
+        self.engine = engine
 
     def get_last_date(self) -> Optional[str]:
         """Check what the latest date already in the database is."""
-        with self.get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT MAX(date) FROM prices;")
-                result = cur.fetchone()[0]
-                return result  # returns None if table is empty
+        with self.engine.connect() as conn:
+            result = conn.execute(text("SELECT MAX(date) FROM prices;")).fetchone()
+            return result[0] if result and result[0] else None
 
     def load(self, df: pd.DataFrame) -> int:
         """
         Idempotent upsert — inserts rows, skips duplicates.
         Returns number of rows inserted.
         """
-        # Replace NaN with None so PostgreSQL gets NULL
+        # Replace NaN with None so PostgreSQL/SQLite gets NULL
         df = df.replace({float('nan'): None, pd.NaT: None})
         df = df.where(pd.notnull(df), None)
 
         records = [
-            (
-                row.date,
-                row.product,
-                row.unit,
-                row.max_price,
-                row.min_price,
-                row.avg_price,
-                row.price_spread,
-                row.price_midpoint,
-                int(row.year)         if row.year         is not None else None,
-                int(row.month)        if row.month        is not None else None,
-                int(row.week_of_year) if row.week_of_year is not None else None,
-                int(row.day_of_week)  if row.day_of_week  is not None else None,
-                row.is_weekend,
-                row._source_url      if hasattr(row, '_source_url')      else None,
-                row._ingested_at     if hasattr(row, '_ingested_at')     else None,
-                row._transformed_at  if hasattr(row, '_transformed_at')  else None,
-            )
+            {
+                "date": row.date.date() if hasattr(row.date, 'date') else row.date,
+                "product": row.product,
+                "unit": row.unit,
+                "max_price": row.max_price,
+                "min_price": row.min_price,
+                "avg_price": row.avg_price,
+                "price_spread": row.price_spread,
+                "price_midpoint": row.price_midpoint,
+                "year": int(row.year) if row.year is not None else None,
+                "month": int(row.month) if row.month is not None else None,
+                "week_of_year": int(row.week_of_year) if row.week_of_year is not None else None,
+                "day_of_week": int(row.day_of_week) if row.day_of_week is not None else None,
+                "is_weekend": row.is_weekend,
+                "source_url": row._source_url if hasattr(row, '_source_url') else None,
+                "ingested_at": row._ingested_at if hasattr(row, '_ingested_at') else None,
+                "transformed_at": row._transformed_at if hasattr(row, '_transformed_at') else None,
+            }
             for row in df.itertuples(index=False)
         ]
+        
+        if not records:
+            return 0
 
-        insert_sql = """
+        insert_sql = text("""
             INSERT INTO prices (
                 date, product, unit,
                 max_price, min_price, avg_price,
                 price_spread, price_midpoint,
                 year, month, week_of_year, day_of_week,
                 is_weekend, source_url, ingested_at, transformed_at
-            ) VALUES %s
+            ) VALUES (
+                :date, :product, :unit,
+                :max_price, :min_price, :avg_price,
+                :price_spread, :price_midpoint,
+                :year, :month, :week_of_year, :day_of_week,
+                :is_weekend, :source_url, :ingested_at, :transformed_at
+            )
             ON CONFLICT (date, product) DO NOTHING;
-        """
+        """)
 
-        with self.get_connection() as conn:
-            with conn.cursor() as cur:
-                execute_values(cur, insert_sql, records, page_size=1000)
-                inserted = cur.rowcount
-            conn.commit()
+        with self.engine.begin() as conn:
+            result = conn.execute(insert_sql, records)
+            inserted = result.rowcount
 
         logger.info("Load complete — %d rows inserted.", inserted)
         return inserted
