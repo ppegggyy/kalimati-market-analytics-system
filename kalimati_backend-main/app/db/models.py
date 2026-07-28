@@ -1,9 +1,12 @@
 # app/db/models.py
 
-from sqlalchemy import Boolean, Column, Date, DateTime, Float, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, Index, Integer, String, Text, UniqueConstraint, JSON
 from sqlalchemy.dialects.postgresql import JSONB
 
 from .session import Base
+
+# Create a dialect-agnostic JSON type that uses JSONB on Postgres
+JSONVariant = JSON().with_variant(JSONB, "postgresql")
 
 
 class PriceRecord(Base):
@@ -40,6 +43,7 @@ class PriceRecord(Base):
 
     __table_args__ = (
         Index("ix_prices_product_date", "product", "date"),
+        UniqueConstraint("date", "product", name="prices_date_product_key"),
     )
 
     # Fix 6: Pydantic schema uses field name 'record_date'; ORM column is 'date'.
@@ -62,7 +66,7 @@ class AnalyticsCache(Base):
     metric_type = Column(Text, nullable=False)
     window_days = Column(Integer, nullable=True)
     as_of_date = Column(Date, nullable=False)
-    payload = Column(JSONB, nullable=False)
+    payload = Column(JSONVariant, nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=False)
 

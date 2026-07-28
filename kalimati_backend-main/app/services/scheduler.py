@@ -1,7 +1,5 @@
 # app/services/scheduler.py
 import logging
-import sys
-import os
 import threading
 from datetime import date, timedelta
 
@@ -10,14 +8,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 
-# Add the Data Engineering folder to sys.path so we can import the pipeline
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-DATA_ENG_DIR = os.path.join(PROJECT_ROOT, "data_engineering")
-if DATA_ENG_DIR not in sys.path:
-    sys.path.append(DATA_ENG_DIR)
-
+# Use the bundled data extraction pipeline
 try:
-    from data_extraction_pipeline import DataPipeline, DatabaseLoader
+    from app.services.data_extraction_pipeline import DataPipeline, DatabaseLoader
 except ImportError as e:
     logging.getLogger(__name__).error(f"Could not import ETL pipeline: {e}")
     DataPipeline = None
@@ -27,33 +20,23 @@ logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
 
 
-def _get_db_config():
-    """Extract psycopg2 connection config from the SQLAlchemy engine URL."""
+def _get_engine():
+    """Return the SQLAlchemy engine."""
     from app.db.session import engine
-    url = engine.url
-    config = {
-        "host": url.host,
-        "port": url.port or 5432,
-        "dbname": url.database,
-        "user": url.username,
-        "password": url.password,
-    }
-    for key, value in url.query.items():
-        config[key] = value
-    return config
+    return engine
 
 
-def _purge_stale_cache(db_config: dict):
+def _purge_stale_cache(engine):
     """Delete analytics_cache rows older than 14 days to prevent unbounded growth."""
-    import psycopg2
+    from sqlalchemy import text
     try:
-        with psycopg2.connect(**db_config) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "DELETE FROM analytics_cache WHERE updated_at < NOW() - INTERVAL '14 days';"
-                )
-                deleted = cur.rowcount
-            conn.commit()
+        with engine.begin() as conn:
+            result = conn.execute(
+                text("DELETE FROM analytics_cache WHERE updated_at < datetime('now', '-14 days')")
+                if "sqlite" in engine.url.drivername else
+                text("DELETE FROM analytics_cache WHERE updated_at < NOW() - INTERVAL '14 days'")
+            )
+            deleted = result.rowcount
         if deleted:
             logger.info("Cache cleanup — purged %d stale analytics_cache rows.", deleted)
     except Exception as e:
@@ -68,8 +51,8 @@ def run_etl_job():
 
     logger.info("Starting scheduled ETL background job...")
     try:
-        db_config = _get_db_config()
-        loader = DatabaseLoader(db_config)
+        engine = _get_engine()
+        loader = DatabaseLoader(engine)
         pipeline = DataPipeline()
 
         last_date = loader.get_last_date()
@@ -77,9 +60,12 @@ def run_etl_job():
             logger.info("Database is empty. Skipping scheduled run (requires manual parquet load).")
             return
 
-        # Convert to date if it's a datetime
+        # Convert to date if it's a datetime or string (SQLite returns str)
         if hasattr(last_date, 'date'):
             last_date = last_date.date()
+        elif isinstance(last_date, str):
+            from datetime import datetime
+            last_date = datetime.strptime(last_date, "%Y-%m-%d").date()
 
         today = date.today()
         fetch_start = last_date + timedelta(days=1)
@@ -112,7 +98,7 @@ def run_etl_job():
         logger.info("Scheduled ETL complete — %d new rows inserted.", inserted)
 
         # Purge stale cache so analytics recalculate with fresh data
-        _purge_stale_cache(db_config)
+        _purge_stale_cache(engine)
 
     except Exception as e:
         logger.exception("Scheduled ETL failed with error: %s", e)
