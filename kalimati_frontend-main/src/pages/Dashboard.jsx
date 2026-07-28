@@ -120,6 +120,10 @@ export function Dashboard() {
     setLoading(true);
     setError(null);
 
+    // Abort previous in-flight requests to prevent race conditions
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const fetches = [
       fetchMovingAverage(selectedProduct, 7, startDate, endDate),
       fetchTrend(selectedProduct, startDate, endDate),
@@ -131,6 +135,9 @@ export function Dashboard() {
 
     Promise.all(fetches)
       .then(([maData, trendData, compareMaData]) => {
+        // If this effect was cleaned up (stale), don't update state
+        if (signal.aborted) return;
+
         let mergedData = maData.map((row) => ({
           date: row['Date'],
           price: row['Avg Price'],
@@ -154,50 +161,65 @@ export function Dashboard() {
         setRawMaData(maData);
         setTrend(trendData);
       })
-      .catch(() => setError('Failed to load chart data. Check backend logs.'))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (signal.aborted) return;
+        setError('Failed to load chart data. Check backend logs.');
+      })
+      .finally(() => {
+        if (signal.aborted) return;
+        setLoading(false);
+      });
+
+    // Cleanup: abort in-flight requests when dependencies change
+    return () => controller.abort();
   }, [selectedProduct, compareProduct, startDate, endDate]);
 
   const handleDownloadCSV = () => {
-    if (chartData.length === 0) return;
+    if (chartData.length === 0) {
+      setError('No data available to download. Adjust your filters and try again.');
+      return;
+    }
     
-    let csvContent = "data:text/csv;charset=utf-8,";
+    const rows = [];
     
     // Headers
     if (compareProduct) {
-      csvContent += `Date,${selectedProduct} Actual Price,${selectedProduct} 7-Day MA,${compareProduct} Actual Price,${compareProduct} 7-Day MA\n`;
+      rows.push(`Date,${selectedProduct} Actual Price,${selectedProduct} 7-Day MA,${compareProduct} Actual Price,${compareProduct} 7-Day MA`);
     } else {
-      csvContent += `Date,Product,Actual Price,7-Day MA\n`;
+      rows.push(`Date,Product,Actual Price,7-Day MA`);
     }
     
     // Rows
     chartData.forEach(row => {
-      const date = row.date;
-      const p1 = row.price !== null ? row.price : '';
-      const ma1 = row.movingAvg !== null ? row.movingAvg : '';
+      const date = row.date ?? '';
+      const p1 = row.price != null ? row.price : '';
+      const ma1 = row.movingAvg != null ? row.movingAvg : '';
       
       if (compareProduct) {
-        const p2 = row.comparePrice !== null && row.comparePrice !== undefined ? row.comparePrice : '';
-        const ma2 = row.compareMovingAvg !== null && row.compareMovingAvg !== undefined ? row.compareMovingAvg : '';
-        csvContent += `${date},${p1},${ma1},${p2},${ma2}\n`;
+        const p2 = row.comparePrice != null ? row.comparePrice : '';
+        const ma2 = row.compareMovingAvg != null ? row.compareMovingAvg : '';
+        rows.push(`${date},${p1},${ma1},${p2},${ma2}`);
       } else {
-        csvContent += `${date},${selectedProduct},${p1},${ma1}\n`;
+        rows.push(`${date},"${selectedProduct}",${p1},${ma1}`);
       }
     });
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `market_analysis_${startDate}_to_${endDate}.csv`);
+    const csvString = rows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `market_analysis_${startDate}_to_${endDate}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  const latestPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : 0;
-  const prevPrice = chartData.length > 1 ? chartData[chartData.length - 2].price : latestPrice;
+  const latestPrice = chartData.length > 0 ? (chartData[chartData.length - 1].price ?? 0) : 0;
+  const prevPrice = chartData.length > 1 ? (chartData[chartData.length - 2].price ?? latestPrice) : latestPrice;
   const dayChange = latestPrice - prevPrice;
-  const dayChangePct = prevPrice ? ((dayChange / prevPrice) * 100).toFixed(1) : 0;
+  const dayChangePct = prevPrice ? ((dayChange / prevPrice) * 100).toFixed(1) : '0.0';
 
   return (
     <div>

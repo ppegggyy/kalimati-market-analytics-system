@@ -60,7 +60,9 @@ def get_volatility(
     if not as_of:
         raise HTTPException(status_code=404, detail=f"No price data found for product '{product}'.")
         
-    metric_key = f"volatility_{start_date.isoformat()}" if start_date else "volatility"
+    start_str = start_date.isoformat() if start_date else "all"
+    end_str = end_date.isoformat() if end_date else "latest"
+    metric_key = f"volatility_{start_str}_{end_str}"
     cached = crud.get_cached_analytics(db, product, metric_key, as_of)
     if cached:
         return VolatilityResponse(**cached)
@@ -143,7 +145,9 @@ def get_spikes(
     if not as_of:
         raise HTTPException(status_code=404, detail=f"No price data found for product '{product}'.")
         
-    metric_key = f"spikes_{start_date.isoformat()}_{threshold}" if start_date else f"spikes_{threshold}"
+    start_str = start_date.isoformat() if start_date else "all"
+    end_str = end_date.isoformat() if end_date else "latest"
+    metric_key = f"spikes_{start_str}_{end_str}_{threshold}"
     cached = crud.get_cached_analytics(db, product, metric_key, as_of, window)
     if cached:
         return SpikeDetectionResponse(**cached)
@@ -194,7 +198,9 @@ def get_trend(
     if not as_of:
         raise HTTPException(status_code=404, detail=f"No price data found for product '{product}'.")
         
-    metric_key = f"trend_{start_date.isoformat()}" if start_date else "trend"
+    start_str = start_date.isoformat() if start_date else "all"
+    end_str = end_date.isoformat() if end_date else "latest"
+    metric_key = f"trend_{start_str}_{end_str}"
     cached = crud.get_cached_analytics(db, product, metric_key, as_of)
     if cached:
         return TrendResponse(**cached)
@@ -234,7 +240,9 @@ def get_moving_avg(
     if not as_of:
         return []
 
-    metric_key = f"moving_average_{start_date.isoformat()}" if start_date else "moving_average"
+    start_str = start_date.isoformat() if start_date else "all"
+    end_str = end_date.isoformat() if end_date else "latest"
+    metric_key = f"moving_average_{start_str}_{end_str}"
     cached = crud.get_cached_analytics(db, product, metric_key, as_of, window)
     if cached:
         return cached
