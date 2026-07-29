@@ -5,6 +5,9 @@ psycopg2-binary
 pydantic
 pydantic-settings
 pandas
+numpy
 statsmodels
 apscheduler
 python-dotenv
+requests
+scikit-learn

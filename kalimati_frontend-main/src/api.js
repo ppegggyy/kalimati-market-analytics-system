@@ -28,12 +28,13 @@ export async function fetchMovingAverage(
   product,
   window = 7,
   startDate = null,
-  endDate = null
+  endDate = null,
+  signal = undefined
 ) {
   const params = new URLSearchParams({ product, window });
   if (startDate) params.append('start_date', startDate);
   if (endDate)   params.append('end_date',   endDate);
-  const res = await fetch(`${BASE}/analytics/moving-average?${params}`);
+  const res = await fetch(`${BASE}/analytics/moving-average?${params}`, { signal });
   if (!res.ok) {
     if (res.status === 404) return [];
     throw new Error('Failed to fetch moving average');
@@ -83,11 +84,11 @@ export async function fetchBulkVolatility(
 // Returns: { overall_change_pct, highest_price, lowest_price,
 //            mean_price, volatility }
 
-export async function fetchTrend(product, startDate = null, endDate = null) {
+export async function fetchTrend(product, startDate = null, endDate = null, signal = undefined) {
   const params = new URLSearchParams({ product });
   if (startDate) params.append('start_date', startDate);
   if (endDate)   params.append('end_date',   endDate);
-  const res = await fetch(`${BASE}/analytics/trend?${params}`);
+  const res = await fetch(`${BASE}/analytics/trend?${params}`, { signal });
   if (!res.ok) {
     if (res.status === 404) return { overall_change_pct: 0, highest_price: { value: 0 }, lowest_price: { value: 0 }, mean_price: 0, volatility: 0 };
     throw new Error('Failed to fetch trend');

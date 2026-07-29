@@ -9,7 +9,7 @@
 
 from datetime import date as date_type
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ── Read-side base (nullable fields — database has ~14,500 rows with NULL prices) ──
@@ -68,6 +68,29 @@ class PriceRecordCreate(BaseModel):
             return float(v)
         except (TypeError, ValueError) as exc:
             raise ValueError(f"Price must be numeric, got: {v!r}") from exc
+
+    @model_validator(mode="after")
+    def check_price_ordering(self):
+        """Reject logically-inverted price ranges (e.g. min_price > max_price).
+
+        The numeric ge=0 field validators above only bound each price
+        individually — they don't stop min_price from being submitted
+        higher than max_price, which would silently corrupt any chart or
+        analytic that assumes min <= avg <= max (this endpoint is reachable
+        directly via the Swagger UI at /docs even though the frontend never
+        calls it).
+        """
+        if self.min_price > self.max_price:
+            raise ValueError(
+                f"min_price ({self.min_price}) cannot be greater than "
+                f"max_price ({self.max_price})."
+            )
+        if not (self.min_price <= self.avg_price <= self.max_price):
+            raise ValueError(
+                f"avg_price ({self.avg_price}) must be between min_price "
+                f"({self.min_price}) and max_price ({self.max_price})."
+            )
+        return self
 
 
 # ── Analytics response schemas ───────────────────────────────────────────────

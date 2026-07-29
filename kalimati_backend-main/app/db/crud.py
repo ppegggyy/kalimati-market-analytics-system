@@ -129,12 +129,35 @@ def get_unique_products(db: Session) -> list[str]:
 def get_latest_prices(db: Session) -> list[PriceRecord]:
     """Return the single most recent price record for each product.
 
-    Uses PostgreSQL DISTINCT ON for a single index-scan pass.
+    NOTE: This previously used SQLAlchemy's `.distinct(PriceRecord.product)`,
+    which compiles to PostgreSQL's `DISTINCT ON (...)`. That syntax is
+    PostgreSQL-specific — on any other dialect (e.g. SQLite, which is this
+    app's default per app/core/config.py) SQLAlchemy silently falls back to
+    a plain `SELECT DISTINCT` over ALL selected columns. Since `id` is
+    unique per row, that fallback returns EVERY historical row instead of
+    one row per product, which silently broke the "Today's Market
+    Snapshot" table on the Dashboard whenever the app ran on SQLite.
+    A correlated subquery for MAX(date) per product, joined back to the
+    full row, produces the correct one-row-per-product result on every
+    SQL dialect.
     """
+    latest_dates_subq = (
+        db.query(
+            PriceRecord.product.label("product"),
+            func.max(PriceRecord.date).label("max_date"),
+        )
+        .group_by(PriceRecord.product)
+        .subquery()
+    )
+
     return (
         db.query(PriceRecord)
-        .distinct(PriceRecord.product)
-        .order_by(PriceRecord.product, PriceRecord.date.desc())
+        .join(
+            latest_dates_subq,
+            (PriceRecord.product == latest_dates_subq.c.product)
+            & (PriceRecord.date == latest_dates_subq.c.max_date),
+        )
+        .order_by(PriceRecord.product)
         .all()
     )
 

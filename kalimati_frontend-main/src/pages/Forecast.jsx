@@ -34,11 +34,13 @@ export function Forecast() {
 
   useEffect(() => {
     if (!selectedProduct) return;
+    let ignore = false;
     setLoading(true);
     setError(null);
 
     fetchForecast(selectedProduct, steps)
       .then((data) => {
+        if (ignore) return; // a newer request has since superseded this one
         setModelUsed(data.model_used || 'ARIMA');
         setChartData(
           data.forecast.map((point) => ({
@@ -48,8 +50,18 @@ export function Forecast() {
           }))
         );
       })
-      .catch(() => setError('Failed to load ARIMA forecast. Check backend connection.'))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (ignore) return;
+        setError('Failed to load ARIMA forecast. Check backend connection.');
+      })
+      .finally(() => {
+        if (ignore) return;
+        setLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [selectedProduct, steps]);
 
   const currentPrediction = chartData.length > 0 ? chartData[0].forecast : 0;
@@ -93,6 +105,12 @@ export function Forecast() {
 
       {loading ? (
         <div className="state-container">Computing {modelUsed || 'ARIMA'} predictions...</div>
+      ) : chartData.length === 0 ? (
+        <div className="state-container">
+          {error
+            ? null /* the error banner above already explains what went wrong */
+            : `No forecast data available for ${selectedProduct || 'this product'}.`}
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           

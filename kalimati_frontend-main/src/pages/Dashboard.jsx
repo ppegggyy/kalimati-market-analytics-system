@@ -10,12 +10,24 @@ import { useBreakpoint } from '../hooks/useMediaQuery';
 import { getChartMargin, getYAxisWidth, getAxisFontSize } from '../utils/chartHelpers';
 import '../styles/components.css';
 
+// Extract the calendar month (0-11) directly from a "YYYY-MM-DD" date
+// string without ever constructing a Date object. Using `new Date(str)`
+// parses the string as UTC midnight, and `.getMonth()` then reads it back
+// in the BROWSER'S LOCAL timezone — so for any negative UTC-offset zone
+// (e.g. US timezones) a date like "2026-02-01" silently becomes "January"
+// again. Parsing the string directly avoids that UTC/local round-trip.
+function getMonthIndexFromDateString(dateStr) {
+  const month = Number(String(dateStr).slice(5, 7)); // "YYYY-MM-DD" -> "MM"
+  return Number.isInteger(month) && month >= 1 && month <= 12 ? month - 1 : null;
+}
+
 function calculateAdvancedSeasonality(data) {
   const monthlyData = Array(12).fill(null).map(() => []);
 
   data.forEach(row => {
     if (!row.Date || !row['Avg Price']) return;
-    const month = new Date(row.Date).getMonth();
+    const month = getMonthIndexFromDateString(row.Date);
+    if (month === null) return;
     monthlyData[month].push(row['Avg Price']);
   });
 
@@ -43,6 +55,7 @@ function calculateAdvancedSeasonality(data) {
     };
   });
 }
+
 
 function calculateShiftDistribution(data) {
   let up = 0, down = 0, stable = 0;
@@ -125,12 +138,12 @@ export function Dashboard() {
     const signal = controller.signal;
 
     const fetches = [
-      fetchMovingAverage(selectedProduct, 7, startDate, endDate),
-      fetchTrend(selectedProduct, startDate, endDate),
+      fetchMovingAverage(selectedProduct, 7, startDate, endDate, signal),
+      fetchTrend(selectedProduct, startDate, endDate, signal),
     ];
 
     if (compareProduct) {
-      fetches.push(fetchMovingAverage(compareProduct, 7, startDate, endDate));
+      fetches.push(fetchMovingAverage(compareProduct, 7, startDate, endDate, signal));
     }
 
     Promise.all(fetches)

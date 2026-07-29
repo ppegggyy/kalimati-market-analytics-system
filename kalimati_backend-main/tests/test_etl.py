@@ -1,16 +1,17 @@
 # tests/test_etl.py
-import sys
-import os
 import pandas as pd
 import pytest
 
-# Add Data Engineering to sys.path so we can import the pipeline
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-DATA_ENG_DIR = os.path.join(PROJECT_ROOT, "Data Engineering")
-if DATA_ENG_DIR not in sys.path:
-    sys.path.append(DATA_ENG_DIR)
+# Import the ETL pipeline from its actual package location — this is the
+# same module the live background scheduler (app/services/scheduler.py)
+# imports and runs, so testing it here actually exercises production code.
+#
+# NOTE: a top-level standalone copy also exists at data_engineering/ for
+# ad-hoc/offline use, but it is not part of the installable "app" package
+# and is not what the running server uses, so it is intentionally not
+# imported here.
+from app.services.data_extraction_pipeline import DataPipeline
 
-from data_extraction_pipeline import DataPipeline
 
 @pytest.fixture
 def sample_raw_df():

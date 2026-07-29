@@ -27,11 +27,19 @@ def calculate_volatility(df: pd.DataFrame) -> float:
             Must contain columns: ["Date", "Avg Price"].
 
     Returns:
-        Standard deviation (float). Returns 0.0 for < 2 records.
+        Standard deviation (float). Returns 0.0 for < 2 valid records.
     """
-    if df.empty or len(df) < 2:
+    if df.empty:
         return 0.0
-    return float(np.std(df["Avg Price"].values))
+    # Guard against NaN values: np.std() propagates NaN across the whole
+    # result if ANY element is NaN (unlike pandas' NaN-skipping .std()).
+    # All current API routes already dropna() before calling this, but
+    # this function is also used directly (e.g. test_accuracy.py) and
+    # may gain new callers, so it should be safe on its own.
+    prices = df["Avg Price"].dropna().values
+    if len(prices) < 2:
+        return 0.0
+    return float(np.std(prices))
 
 
 def detect_price_spikes(
@@ -67,14 +75,25 @@ def detect_price_spikes(
     # Work on a copy to avoid mutating the caller's DataFrame
     work = df.copy().sort_values("Date").reset_index(drop=True)
 
-    # Rolling average uses PAST `window` rows (min_periods=1 avoids NaNs)
+    # Rolling average uses PAST `window` rows (min_periods=1 avoids NaNs
+    # for rows 1..window-1, which still have at least one prior observation).
     work["rolling_avg"] = (
         work["Avg Price"]
         .rolling(window=window, min_periods=1)
         .mean()
         .shift(1)           # shift so today's price is not in its own average
-        .fillna(work["Avg Price"].mean())  # fill the very first row
     )
+
+    # The very first row has no prior observation at all, so its
+    # rolling_avg is genuinely undefined — NOT "the mean of the whole
+    # series" (which would include the row's own price and could
+    # spuriously mask or manufacture a spike on day one). Drop it from
+    # spike consideration rather than back-filling with a contaminated
+    # baseline.
+    work = work.dropna(subset=["rolling_avg"]).reset_index(drop=True)
+
+    if work.empty:
+        return pd.DataFrame(columns=["Date", "Product", "Avg Price", "rolling_avg", "spike_pct"])
 
     # Compute deviation as a fraction
     work["spike_pct"] = (

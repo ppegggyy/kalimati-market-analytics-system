@@ -9,6 +9,15 @@ import { Forecast } from './pages/Forecast';
 import './styles/global.css';
 import './styles/components.css';
 
+function NotFound() {
+  return (
+    <div className="state-container">
+      <p>Page not found.</p>
+      <a href="/">Return to Dashboard</a>
+    </div>
+  );
+}
+
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -30,6 +39,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/volatility" element={<VolatilityComparison />} />
               <Route path="/forecast" element={<Forecast />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
         </main>

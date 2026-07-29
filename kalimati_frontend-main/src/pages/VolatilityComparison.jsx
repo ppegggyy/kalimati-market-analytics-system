@@ -67,6 +67,10 @@ export function VolatilityComparison() {
 
       {loading ? (
         <div className="state-container">Loading volatility analysis...</div>
+      ) : volatilityData.length === 0 ? (
+        <div className="state-container">
+          {error ? null : 'No volatility data available for any products right now.'}
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           <div className="card">

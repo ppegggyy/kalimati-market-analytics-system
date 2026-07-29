@@ -61,13 +61,38 @@ class ForecastService:
             self._last_price = float(series.iloc[-1]) if len(series) > 0 else 100.0
             return
 
+        # A constant (zero-variance) series — e.g. a sparsely-recorded
+        # product whose few known prices are all identical, or where
+        # forward-filling long gaps produced a flat line — cannot be
+        # tested for stationarity: statsmodels' adfuller() raises a hard
+        # ValueError("Invalid input, x is constant") rather than
+        # returning a p-value. ARIMA has nothing to fit on a flat line
+        # anyway, so go straight to the flat forecast fallback.
+        if series.nunique() <= 1:
+            logger.warning(
+                "Series is constant (all values equal). Falling back to flat forecast."
+            )
+            self._model = None
+            self._last_price = float(series.iloc[-1])
+            return
+
         # --- ADF stationarity test to pick d ---
-        p_value = adfuller(series)[1]
-        d = 0
-        if p_value > 0.05:                               # non-stationary
-            d = 1
-            if adfuller(series.diff().dropna())[1] > 0.05:
-                d = 2                                     # still non-stationary after 1 diff
+        # Wrapped defensively: adfuller() can also raise on other
+        # pathological inputs (e.g. near-constant series after forward
+        # filling); any such failure should degrade to the flat
+        # forecast rather than bubble up as an unhandled 500.
+        try:
+            p_value = adfuller(series)[1]
+            d = 0
+            if p_value > 0.05:                               # non-stationary
+                d = 1
+                if adfuller(series.diff().dropna())[1] > 0.05:
+                    d = 2                                     # still non-stationary after 1 diff
+        except Exception as exc:
+            logger.error("ADF stationarity test failed: %s", exc)
+            self._model = None
+            self._last_price = float(series.iloc[-1])
+            return
 
         self.model_order = (2, d, 1)
         logger.info("ADF p-value=%.4f → ARIMA order set to %s", p_value, self.model_order)
@@ -110,12 +135,15 @@ class ForecastService:
 
         today = date.today()
         gap_days = (today - last_date).days
-        
-        total_steps = steps
-        start_index = 0
-        if gap_days > 0:
-            total_steps = steps + gap_days
-            start_index = gap_days - 1
+
+        # The model's forecast index 0 always corresponds to (last_date + 1 day).
+        # `today` is therefore (gap_days) days after last_date, i.e. forecast
+        # index (gap_days - 1). When the data is already current through today
+        # (gap_days <= 0), that index would be negative — which Python would
+        # silently reinterpret as counting from the END of the forecast array.
+        # Clamp to 0 so "today" always maps to the model's first predicted step.
+        start_index = max(gap_days - 1, 0)
+        total_steps = steps + start_index
 
         # --- Flat fallback if ARIMA failed to fit ---
         if self._model is None:
