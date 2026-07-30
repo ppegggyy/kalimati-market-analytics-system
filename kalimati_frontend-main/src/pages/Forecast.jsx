@@ -6,7 +6,7 @@ import {
 import { AlertCircle, Target, TrendingUp, Calendar } from 'lucide-react';
 import { fetchProducts, fetchForecast } from '../api';
 import { useBreakpoint } from '../hooks/useMediaQuery';
-import { getChartMargin, getYAxisWidth, getAxisFontSize } from '../utils/chartHelpers';
+import { getChartMargin, getYAxisWidth, getAxisFontSize, formatDateDisplay } from '../utils/chartHelpers';
 import '../styles/components.css';
 
 export function Forecast() {
@@ -179,7 +179,7 @@ export function Forecast() {
                     tickLine={false} 
                     axisLine={false}
                     minTickGap={isMobile ? 24 : 40}
-                    tickFormatter={(d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    tickFormatter={(d) => formatDateDisplay(d, { month: 'short', day: 'numeric' })}
                   />
                   <YAxis 
                     stroke="var(--text-light)" 
@@ -195,7 +195,7 @@ export function Forecast() {
                       if (name === '95% Confidence') return ['', ''];
                       return [`Rs. ${Number(val).toFixed(2)}`, 'Predicted Avg'];
                     }}
-                    labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    labelFormatter={(label) => formatDateDisplay(label, { year: 'numeric', month: 'short', day: 'numeric' })}
                   />
                   
                   {/* Confidence interval band */}

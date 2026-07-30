@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, ComposedChart, Line, PieChart, Pie, Cell, Legend
@@ -7,7 +7,7 @@ import {
 import { Activity, TrendingUp, Banknote, AlertCircle, Calendar, Download } from 'lucide-react';
 import { fetchProducts, fetchMovingAverage, fetchTrend, fetchLatestPrices } from '../api';
 import { useBreakpoint } from '../hooks/useMediaQuery';
-import { getChartMargin, getYAxisWidth, getAxisFontSize } from '../utils/chartHelpers';
+import { getChartMargin, getYAxisWidth, getAxisFontSize, formatDateDisplay } from '../utils/chartHelpers';
 import '../styles/components.css';
 
 // Extract the calendar month (0-11) directly from a "YYYY-MM-DD" date
@@ -106,7 +106,37 @@ export function Dashboard() {
   const seasonalData = useMemo(() => calculateAdvancedSeasonality(rawMaData), [rawMaData]);
   const shiftData = useMemo(() => calculateShiftDistribution(rawMaData), [rawMaData]);
   const compareProductOptions = useMemo(() => products.filter(p => p !== selectedProduct), [products, selectedProduct]);
-  const recentChartData = useMemo(() => chartData.slice(-14), [chartData]);
+  // Anchor "Recent 14-Day" to the actual last 14 calendar days ending
+  // today, not to however many rows the API happened to return.
+  // chartData.slice(-14) silently showed a product's last 14 *available*
+  // rows, which for a commodity whose price data hasn't been updated
+  // recently could be weeks or months old -- plotted and labeled as if it
+  // were "recent" with no indication anything was stale. Building the
+  // window from real dates leaves a visible gap (no bar) for any day with
+  // no data, instead of quietly rendering old dates as if they were current.
+  const recentChartData = useMemo(() => {
+    const byDate = new Map(chartData.map((row) => [row.date, row]));
+    const days = [];
+    const today = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const iso = d.toLocaleDateString('en-CA'); // YYYY-MM-DD, local timezone
+      days.push(byDate.get(iso) ?? { date: iso, price: null, movingAvg: null });
+    }
+    return days;
+  }, [chartData]);
+
+  // The most recent date this product actually has data for, so the UI
+  // can flag it when that's meaningfully behind "today" instead of
+  // silently showing old data under a "recent" label.
+  const latestDataDate = chartData.length > 0 ? chartData[chartData.length - 1].date : null;
+  const isRecentDataStale = useMemo(() => {
+    if (!latestDataDate) return false;
+    const [y, m, d] = latestDataDate.split('-').map(Number);
+    const daysBehind = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(y, m - 1, d).getTime()) / 86400000);
+    return daysBehind > 2; // small ETL lag is normal; flag anything more
+  }, [latestDataDate]);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -174,7 +204,7 @@ export function Dashboard() {
         setRawMaData(maData);
         setTrend(trendData);
       })
-      .catch((err) => {
+      .catch(() => {
         if (signal.aborted) return;
         setError('Failed to load chart data. Check backend logs.');
       })
@@ -516,6 +546,14 @@ export function Dashboard() {
             <div className="card">
               <div className="card-header">
                 <h2 className="card-title">Recent 14-Day Price Movement</h2>
+                {isRecentDataStale && (
+                  <span
+                    className="badge badge-warning"
+                    title={`No newer data available for this product — latest record is ${latestDataDate}`}
+                  >
+                    Data as of {formatDateDisplay(latestDataDate, { month: 'short', day: 'numeric' })}
+                  </span>
+                )}
               </div>
               <div className="chart-wrapper-sm">
                 <ResponsiveContainer width="100%" height="100%">
@@ -528,14 +566,14 @@ export function Dashboard() {
                       tickLine={false} 
                       axisLine={false}
                       minTickGap={isMobile ? 8 : 16}
-                      tickFormatter={(d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      tickFormatter={(d) => formatDateDisplay(d, { month: 'short', day: 'numeric' })}
                     />
                     <YAxis stroke="var(--text-light)" fontSize={axisFontSize} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs ${val}`} width={yAxisWidth} />
                     <Tooltip 
                       cursor={{ fill: 'var(--bg-app)' }}
                       contentStyle={{ borderRadius: '16px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-lg)' }}
-                      formatter={(val) => [`Rs. ${Number(val).toFixed(2)}`, 'Price']}
-                      labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      formatter={(val) => [val == null ? 'No data' : `Rs. ${Number(val).toFixed(2)}`, 'Price']}
+                      labelFormatter={(label) => formatDateDisplay(label, { year: 'numeric', month: 'short', day: 'numeric' })}
                     />
                     <Bar dataKey="price" fill="var(--accent-info)" radius={[4, 4, 0, 0]} barSize={20} />
                   </BarChart>
@@ -571,7 +609,7 @@ export function Dashboard() {
                         <td style={{ fontWeight: 600 }}>{item["Product"]}</td>
                         <td className="col-hide-mobile">{item["Unit"]}</td>
                         <td className="col-hide-tablet">
-                          {new Date(item["Date"]).toLocaleDateString()}
+                          {formatDateDisplay(item["Date"], { year: 'numeric', month: 'short', day: 'numeric' })}
                         </td>
                         <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item["Min Price"]?.toFixed(2) || '—'}</td>
                         <td className="col-hide-mobile" style={{ textAlign: 'right' }}>Rs. {item["Max Price"]?.toFixed(2) || '—'}</td>

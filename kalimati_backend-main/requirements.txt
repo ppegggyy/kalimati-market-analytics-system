@@ -1,13 +1,28 @@
-fastapi
-uvicorn
-sqlalchemy
-psycopg2-binary
-pydantic
-pydantic-settings
-pandas
-numpy
-statsmodels
-apscheduler
-python-dotenv
-requests
-scikit-learn
+# Pinned to versions verified to work together (see tests/ and test suite).
+# Unpinned installs previously pulled in whatever was newest on PyPI at
+# install time, which caused two real problems that surfaced in review:
+#   1. fastapi/starlette moved to a release line whose TestClient requires
+#      a package called "httpx2" instead of the standard "httpx" — that
+#      package was never declared anywhere, so `pip install -r
+#      requirements.txt` followed by `pytest` failed before any test ran.
+#   2. pandas jumped to a 3.x major release with breaking changes, an
+#      unnecessary risk for a submission that needs to behave identically
+#      on every machine it's installed on.
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+pydantic==2.10.3
+pydantic-settings==2.7.0
+pandas==2.2.3
+numpy==1.26.4
+statsmodels==0.14.4
+apscheduler==3.10.4
+python-dotenv==1.0.1
+requests==2.32.3
+scikit-learn==1.5.2
+
+# Test-only, but declared here since SETUP_GUIDE.md's `pytest tests/ -v`
+# step needs them and there is no separate dev-requirements file.
+httpx==0.27.2
+pytest==8.3.3

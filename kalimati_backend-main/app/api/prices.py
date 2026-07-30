@@ -6,6 +6,7 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -99,4 +100,19 @@ def get_price(record_id: int, db: Session = Depends(get_db)):
     summary="Insert a new price record",
 )
 def create_price(payload: PriceRecordCreate, db: Session = Depends(get_db)):
-    return crud.create_price_record(db, payload)
+    # The `prices` table has a UNIQUE(date, product) constraint. Submitting
+    # the same (date, product) twice — e.g. a double-click on Swagger UI's
+    # "Execute", or a retried request — previously raised an unhandled
+    # IntegrityError straight through to a raw 500. Catch it and return a
+    # clean, expected 409 instead.
+    try:
+        return crud.create_price_record(db, payload)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"A price record for product '{payload.product}' on "
+                f"{payload.record_date} already exists."
+            ),
+        )

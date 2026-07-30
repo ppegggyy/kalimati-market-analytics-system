@@ -73,10 +73,15 @@ app = FastAPI(
 )
 
 # ── CORS (adjust origins for production) ──────────────────────────
+# allow_origins=["*"] together with allow_credentials=True is invalid per
+# the CORS spec — browsers reject that combination for any request that
+# actually sends credentials. The frontend (src/api.js) never sends
+# cookies/credentials, so allow_credentials=False matches real usage and
+# keeps the wildcard origin fully valid.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],   # tighten in production
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -1,3 +1,20 @@
+// Format a "YYYY-MM-DD" date string for display WITHOUT ever constructing
+// a Date object from the bare string. `new Date("2026-07-29")` parses the
+// string as UTC midnight; calling .toLocaleDateString() on that then reads
+// it back in the browser's LOCAL timezone. For anyone in a negative
+// UTC-offset zone (all of the Americas, for example) that silently shows
+// the day before the actual date on every chart tick, tooltip, and table
+// cell that does this. Parsing the string's Y/M/D components directly and
+// building a LOCAL-time Date (not a UTC one) avoids the round-trip shift.
+export function formatDateDisplay(dateStr, options = { month: 'short', day: 'numeric' }) {
+  if (!dateStr) return '';
+  const [year, month, day] = String(dateStr).slice(0, 10).split('-').map(Number);
+  if (!year || !month || !day) return String(dateStr);
+  // Local midnight, not UTC midnight — no timezone round-trip to shift the day.
+  const localDate = new Date(year, month - 1, day);
+  return localDate.toLocaleDateString('en-US', options);
+}
+
 export function getChartMargin(isMobile, isTablet) {
   if (isMobile) return { top: 8, right: 4, left: -8, bottom: 0 };
   if (isTablet) return { top: 10, right: 12, left: 0, bottom: 0 };

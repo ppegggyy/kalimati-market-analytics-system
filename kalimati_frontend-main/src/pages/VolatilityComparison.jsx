@@ -41,7 +41,7 @@ export function VolatilityComparison() {
           .sort((a, b) => b.std_dev - a.std_dev);
 
         setVolatilityData(data);
-      } catch (err) {
+      } catch {
         setError('Failed to load volatility data. Is the backend running?');
       } finally {
         setLoading(false);

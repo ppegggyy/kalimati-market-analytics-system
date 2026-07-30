@@ -67,21 +67,26 @@ pip install -r requirements.txt
 ```
 
 > This installs: FastAPI, Uvicorn, Pydantic, Pandas, NumPy,
-> SQLAlchemy, Alembic, statsmodels, scikit-learn, pytest, and more.
+> SQLAlchemy, statsmodels, scikit-learn, requests, and more (all versions
+> pinned in requirements.txt for reproducibility).
 
 ---
 
-## 5. Configure Environment Variables
+## 5. Configure Environment Variables (optional)
+
+No `.env` file is required to run the project — `app/core/config.py`
+defines sensible defaults for everything (SQLite database, debug mode
+on, default analytics thresholds), so you can skip straight to Step 6.
+
+If you want to override any setting (e.g. to point at a real Postgres
+instance), create your own `.env` file in the project root — there
+isn't one checked into the repo by default:
 
 ```powershell
-# Copy the example env file
-Copy-Item .env .env.local     # optional — keep .env as-is for dev
-
-# Open .env in VS Code and review settings
-code .env
+code .env    # creates a new file
 ```
 
-Key settings to check:
+Key settings you can set in it:
 
 | Variable | Default | Notes |
 |----------|---------|-------|
@@ -149,48 +154,48 @@ Works out of the box. The file `kalimati.db` is created automatically on first r
 # Install psycopg2 driver
 pip install psycopg2-binary
 
-# Update .env
+# Create/update your .env (see Step 5 — none is checked in by default)
 # DATABASE_URL=postgresql://user:password@localhost:5432/kalimati_db
 ```
 
-### Alembic Migrations (DB Expert)
+### Alembic Migrations (optional — not currently used)
+
+The project currently manages the schema with SQLAlchemy's
+`Base.metadata.create_all()` (see `app/main.py`), not Alembic, and
+`alembic` is **not** in `requirements.txt`. If you want real migrations
+instead of `create_all()`, install and set it up yourself:
 
 ```powershell
-# Initialise Alembic (run once)
+pip install alembic
 alembic init migrations
 
 # Edit migrations/env.py — add these two lines:
 #   from app.db.session import Base
 #   target_metadata = Base.metadata
 
-# Generate first migration
 alembic revision --autogenerate -m "initial_price_records_table"
-
-# Apply migration
 alembic upgrade head
-
-# Roll back if needed
-alembic downgrade -1
 ```
 
 ---
 
-## 10. ARIMA Model Setup (for the ML Expert)
+## 10. ARIMA Forecasting
+
+`app/services/forecast_service.py` already contains a complete, working
+ARIMA implementation (auto-selects the differencing order via an ADF
+stationarity test, falls back to a flat forecast for short or constant
+series). Nothing further is required to run it.
 
 ```powershell
 # statsmodels is already installed via requirements.txt
 # To verify:
 python -c "import statsmodels; print(statsmodels.__version__)"
-
-# Open the placeholder file
-code app/services/forecast_service.py
 ```
 
-**Steps for the ML Expert:**
-1. Implement `ForecastService.train()` with real ARIMA fitting.
-2. Implement `ForecastService.predict()` with real `model.forecast()` call.
-3. Optionally persist models: `joblib.dump(model, "models/tomato.pkl")`.
-4. Update `model_used` field in `analytics.py` to the real model name.
+If you want to extend it further:
+1. Swap in a different model in `ForecastService.train()` / `predict()`.
+2. Optionally persist trained models: `joblib.dump(model, "models/tomato.pkl")`.
+3. Update the `model_used` field returned by `/analytics/forecast` accordingly.
 
 ---
 
@@ -200,7 +205,7 @@ code app/services/forecast_service.py
 kalimati_backend/
 │
 ├── app/
-│   ├── main.py                  ← FastAPI app entry-point
+│   ├── main.py                  ← FastAPI app entry-point, CORS, lifespan
 │   │
 │   ├── api/
 │   │   ├── __init__.py          ← Aggregates all routers
@@ -209,7 +214,7 @@ kalimati_backend/
 │   │
 │   ├── core/
 │   │   ├── __init__.py
-│   │   ├── config.py            ← Settings (reads .env)
+│   │   ├── config.py            ← Settings (all have defaults; .env optional)
 │   │   └── analytics.py         ← Business logic (spikes, volatility, trend)
 │   │
 │   ├── schemas/
@@ -219,20 +224,32 @@ kalimati_backend/
 │   ├── db/
 │   │   ├── __init__.py
 │   │   ├── session.py           ← SQLAlchemy engine + get_db() dependency
-│   │   ├── models.py            ← ORM model (PriceRecord table)
-│   │   └── crud.py              ← DB queries (placeholder → DB Expert)
+│   │   ├── models.py            ← ORM models (PriceRecord, AnalyticsCache)
+│   │   ├── bootstrap.py         ← Postgres-only DB object setup, runs at startup
+│   │   └── crud.py              ← DB queries
 │   │
 │   └── services/
 │       ├── __init__.py
-│       └── forecast_service.py  ← ARIMA wrapper (placeholder → ML Expert)
+│       ├── forecast_service.py          ← ARIMA forecasting
+│       ├── scheduler.py                 ← Background ETL + cache-purge jobs
+│       └── data_extraction_pipeline.py  ← ETL used by the live app
 │
 ├── tests/
-│   └── test_analytics.py        ← Unit tests for core analytics
+│   ├── test_analytics.py        ← Unit tests for core analytics
+│   ├── test_api.py              ← API tests (mocked DB layer)
+│   └── test_etl.py              ← ETL transform tests
 │
-├── .env                         ← Environment variables (do not commit secrets)
-├── requirements.txt             ← All Python dependencies
+├── test_accuracy.py             ← Standalone forecast-accuracy script; expects a
+│                                 local Postgres DB, not run as part of `pytest`
+├── requirements.txt             ← All Python dependencies (version-pinned)
 └── SETUP_GUIDE.md               ← This file
 ```
+
+> **Note:** `data_engineering/data_extraction_pipeline.py` (outside `app/`)
+> is an older standalone copy of the ETL script, kept for manual/offline
+> use. It is **not** imported by the running app — the live scheduler
+> uses `app/services/data_extraction_pipeline.py`. If you edit the ETL
+> logic, edit the copy under `app/services/`.
 
 ---
 

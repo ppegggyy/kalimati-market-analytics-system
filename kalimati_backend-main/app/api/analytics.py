@@ -280,8 +280,18 @@ def forecast_prices(
     as_of = crud.get_latest_date_for_product(db, payload.product)
     if not as_of:
         raise HTTPException(status_code=404, detail=f"No price data found for product '{payload.product}'.")
-        
-    cached = crud.get_cached_analytics(db, payload.product, "forecast_v2", as_of, payload.steps)
+
+    # NOTE: forecast output is anchored to *today* (ForecastService.predict()
+    # generates record_date values starting from date.today()), not just to
+    # the data's last-updated date. Caching solely by `as_of` (the data date)
+    # means that if the underlying data doesn't change for a few days, the
+    # cached response keeps returning record_date values from whenever it
+    # was first computed — visibly stale dates on any later demo/grading day.
+    # Folding today's date into the cache key ties the cached payload's
+    # validity to the calendar day it was actually generated for.
+    today_str = date.today().isoformat()
+    metric_key = f"forecast_v2_{today_str}"
+    cached = crud.get_cached_analytics(db, payload.product, metric_key, as_of, payload.steps)
     if cached:
         return ForecastResponse(**cached)
 
@@ -303,5 +313,5 @@ def forecast_prices(
         model_used=f"ARIMA{_forecast_service.model_order}",
         forecast=forecast_points,
     )
-    crud.set_cached_analytics(db, payload.product, "forecast_v2", as_of, jsonable_encoder(resp), payload.steps)
+    crud.set_cached_analytics(db, payload.product, metric_key, as_of, jsonable_encoder(resp), payload.steps)
     return resp
